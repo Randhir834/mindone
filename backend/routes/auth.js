@@ -6,7 +6,7 @@ const { protect } = require("../middleware/auth");
 router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.put("/reset-password/:token", resetPassword);
 
 // Add user search route for mentions
 router.get("/users/search", protect, require("../controllers/authController").searchUsers);

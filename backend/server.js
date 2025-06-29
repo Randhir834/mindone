@@ -10,9 +10,9 @@ const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 
-// Middleware
+// Middleware - Allow all origins for development
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: true, // Allow all origins
   credentials: true
 }));
 app.use(express.json());
@@ -33,8 +33,12 @@ const startServer = async () => {
     await connectDB();
     
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => {
+    const HOST = '0.0.0.0'; // Listen on all network interfaces
+    
+    app.listen(PORT, HOST, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`🌐 Network access: http://10.14.161.234:${PORT}`);
+      console.log(`📱 CORS enabled for all origins`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error.message);
