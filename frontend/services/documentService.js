@@ -42,9 +42,21 @@ export const documentService = {
   async createDocument(title, content, visibility = 'private') {
     try {
       const response = await api.post('/documents', { title, content, visibility });
-      return response.data;
+      
+      // Check if the response contains a valid document
+      if (response.data && response.data._id) {
+        return response.data;
+      } else {
+        throw { msg: 'Invalid response from server' };
+      }
     } catch (error) {
       console.error('Document creation error:', error);
+      
+      // If we have a successful response but with an error message, it might be a false positive
+      if (error.response && error.response.status === 201) {
+        return error.response.data;
+      }
+      
       if (error.response?.data?.msg) {
         throw error.response.data;
       } else if (error.response?.status === 500) {
@@ -118,6 +130,26 @@ export const documentService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { msg: 'Failed to share document' };
+    }
+  },
+
+  // Get a public document (no authentication required)
+  async getPublicDocument(id) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/documents/public/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { msg: 'Failed to fetch public document' };
+    }
+  },
+
+  // Remove a user from document sharing
+  async removeSharedUser(documentId, userId) {
+    try {
+      const response = await api.delete(`/documents/${documentId}/share/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { msg: 'Failed to remove user from document sharing' };
     }
   }
 };

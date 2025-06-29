@@ -47,11 +47,19 @@ export const useAuth = () => {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   
   // Check if we're on the client side
   useEffect(() => {
     setIsClient(true);
-    setIsAuthenticated(authService.isAuthenticated());
+    const authenticated = authService.isAuthenticated();
+    setIsAuthenticated(authenticated);
+    
+    if (authenticated) {
+      const token = authService.getToken();
+      const userData = getUserFromToken(token);
+      setUser(userData);
+    }
   }, []);
 
   // Handle authentication redirect
@@ -63,6 +71,7 @@ export const useAuth = () => {
 
   return {
     isAuthenticated: isClient ? authService.isAuthenticated() : false,
+    user,
     logout: authService.logout,
     getToken: authService.getToken
   };

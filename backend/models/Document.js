@@ -25,7 +25,16 @@ const documentSchema = new mongoose.Schema({
     enum: ['public', 'private', 'shared'],
     default: 'private'
   },
-  sharedWith: [shareSchema]
+  sharedWith: [shareSchema],
+  // Version control fields
+  currentVersion: {
+    type: Number,
+    default: 1
+  },
+  lastVersionCreatedAt: {
+    type: Date,
+    default: Date.now
+  }
 }, { timestamps: true });
 
 // Create a text index for searching content and title

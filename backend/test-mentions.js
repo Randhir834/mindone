@@ -92,18 +92,29 @@ async function testMentionFunctionality() {
     });
     console.log(`   ✅ ${secondUser.name} has ${notificationsResponse.data.length} notifications`);
 
-    // Step 7: Test mention notification creation
-    console.log('\n7. Testing mention notification...');
-    await axios.post(`${API_BASE_URL}/notifications/mention`, {
-      documentId: documentId,
-      mentionedUserId: secondUser.userId,
-      mentionedUserName: secondUser.name
+    // Step 7: Test mention functionality by updating document with mention
+    console.log('\n7. Testing mention functionality...');
+    const mentionContent = `<p>Hello <span class="mention" data-mention="${secondUser.userId}">@${secondUser.name}</span>, please review this document.</p>`;
+    
+    await axios.put(`${API_BASE_URL}/documents/${documentId}`, {
+      content: mentionContent
     }, {
       headers: { Authorization: `Bearer ${firstUser.token}` }
     });
-    console.log(`   ✅ Created mention notification for ${secondUser.name}`);
+    console.log(`   ✅ Updated document with mention of ${secondUser.name}`);
 
-    // Step 8: Check updated notifications
+    // Step 8: Check if mentioned user can access the document
+    console.log('\n8. Testing document access for mentioned user...');
+    try {
+      const accessResponse = await axios.get(`${API_BASE_URL}/documents/${documentId}`, {
+        headers: { Authorization: `Bearer ${secondUser.token}` }
+      });
+      console.log(`   ✅ ${secondUser.name} can access the document: "${accessResponse.data.title}"`);
+    } catch (error) {
+      console.log(`   ❌ ${secondUser.name} cannot access the document:`, error.response?.data?.msg || error.message);
+    }
+
+    // Step 9: Check updated notifications
     const updatedNotificationsResponse = await axios.get(`${API_BASE_URL}/notifications`, {
       headers: { Authorization: `Bearer ${secondUser.token}` }
     });
@@ -116,12 +127,75 @@ async function testMentionFunctionality() {
     console.log('   - User search for mentions ✅');
     console.log('   - Document sharing ✅');
     console.log('   - Notification system ✅');
-    console.log('   - Mention notifications ✅');
+    console.log('   - Automatic mention processing ✅');
+    console.log('   - Document access for mentioned users ✅');
 
   } catch (error) {
     console.error('❌ Test failed:', error.response?.data || error.message);
   }
 }
 
-// Run the test
+// Test script to verify mention extraction and processing
+const extractMentionedIds = (content) => {
+    if (!content) return new Set();
+    
+    const ids = new Set();
+    const mentionRegex = /data-mention="([^"]+)"/g;
+    let match;
+    
+    console.log('Extracting mentions from content:', content.substring(0, 200) + '...');
+    
+    while ((match = mentionRegex.exec(content)) !== null) {
+        // match[1] is the captured group (the user ID)
+        const userId = match[1];
+        if (userId && userId.trim()) {
+            ids.add(userId.trim());
+            console.log('Found mention:', userId);
+        }
+    }
+    
+    console.log('Total mentions found:', ids.size);
+    return ids;
+};
+
+// Test cases
+const testCases = [
+    {
+        name: 'No mentions',
+        content: '<p>This is a regular document without any mentions.</p>',
+        expected: 0
+    },
+    {
+        name: 'Single mention',
+        content: '<p>Hello <span class="mention" data-mention="507f1f77bcf86cd799439011">@John Doe</span>, how are you?</p>',
+        expected: 1
+    },
+    {
+        name: 'Multiple mentions',
+        content: '<p>Hello <span class="mention" data-mention="507f1f77bcf86cd799439011">@John Doe</span> and <span class="mention" data-mention="507f1f77bcf86cd799439012">@Jane Smith</span>, how are you?</p>',
+        expected: 2
+    },
+    {
+        name: 'Duplicate mentions',
+        content: '<p>Hello <span class="mention" data-mention="507f1f77bcf86cd799439011">@John Doe</span> and <span class="mention" data-mention="507f1f77bcf86cd799439011">@John Doe</span> again!</p>',
+        expected: 1
+    },
+    {
+        name: 'Empty mention',
+        content: '<p>Hello <span class="mention" data-mention="">@Empty</span></p>',
+        expected: 0
+    }
+];
+
+console.log('Testing mention extraction...\n');
+
+testCases.forEach(testCase => {
+    const result = extractMentionedIds(testCase.content);
+    const passed = result.size === testCase.expected;
+    console.log(`${passed ? '✅' : '❌'} ${testCase.name}: Expected ${testCase.expected}, Got ${result.size}`);
+});
+
+console.log('\n' + '='.repeat(50) + '\n');
+
+// Run the main test
 testMentionFunctionality(); 

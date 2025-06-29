@@ -1,29 +1,51 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
+import Underline from '@tiptap/extension-underline';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import FontFamily from '@tiptap/extension-font-family';
+import Image from '@tiptap/extension-image';
+import Youtube from '@tiptap/extension-youtube';
 import { ReactRenderer } from '@tiptap/react';
 import tippy from 'tippy.js';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import 'tippy.js/dist/tippy.css';
 
 import MentionList from './MentionList';
 import { userService } from '../services/userService';
 
-const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
-  // CORRECTED: The handleNewMention and related API calls have been removed.
-  // The backend's `createDocument` and `updateDocument` endpoints will now process 
-  // any new mentions from the updated content, making this frontend logic redundant.
+const ToolbarButton = ({ onClick, active, icon, label, children, ...props }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`px-2 py-1 rounded hover:bg-indigo-100 transition border border-transparent ${active ? 'bg-indigo-200 text-indigo-700 font-bold' : 'text-gray-700'}`}
+    title={label}
+    {...props}
+  >
+    {icon ? <span className="mr-1">{icon}</span> : null}
+    {children}
+  </button>
+);
 
+const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
+  const fileInputRef = useRef();
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Underline,
+      TextStyle,
+      Color,
+      FontFamily,
+      Image,
+      Youtube,
       Mention.configure({
         HTMLAttributes: {
           class: 'mention',
           'data-mention': ({ node }) => node.attrs.id,
         },
         renderLabel({ node }) {
-          return `@${node.attrs.label ?? node.attrs.id}`
+          return `@${node.attrs.label ?? node.attrs.id}`;
         },
         suggestion: {
           items: async (query) => {
@@ -34,16 +56,13 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
           render: () => {
             let component;
             let popup;
-
             return {
               onStart: (props) => {
                 component = new ReactRenderer(MentionList, {
                   props,
                   editor: props.editor,
                 });
-
                 if (!props.clientRect) return;
-
                 popup = tippy('body', {
                   getReferenceClientRect: props.clientRect,
                   appendTo: () => document.body,
@@ -90,12 +109,137 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
 
   useEffect(() => {
     if (editor && !editor.isDestroyed && editor.getHTML() !== content) {
-        editor.commands.setContent(content, false);
+      editor.commands.setContent(content, false);
     }
   }, [content, editor]);
 
+  // Image upload handler
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && editor) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editor.chain().focus().setImage({ src: e.target.result }).run();
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // YouTube embed handler
+  const handleYouTubeEmbed = () => {
+    const url = prompt('Enter YouTube video URL:');
+    if (url) {
+      editor.chain().focus().setYoutubeVideo({ src: url }).run();
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 tiptap-wrapper">
+      {/* Toolbar */}
+      {editor && (
+        <div className="flex flex-wrap gap-2 p-2 border-b bg-gray-50 rounded-t-lg">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive('bold')}
+            label="Bold"
+          >
+            <b>B</b>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive('italic')}
+            label="Italic"
+          >
+            <i>I</i>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            active={editor.isActive('underline')}
+            label="Underline"
+          >
+            <u>U</u>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive('strike')}
+            label="Strike"
+          >
+            <s>S</s>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor.isActive('heading', { level: 1 })}
+            label="Heading 1"
+          >
+            H1
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor.isActive('heading', { level: 2 })}
+            label="Heading 2"
+          >
+            H2
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive('bulletList')}
+            label="Bullet List"
+          >
+            • List
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive('orderedList')}
+            label="Ordered List"
+          >
+            1. List
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setColor('#F43F5E').run()}
+            label="Red Text"
+            style={{ color: '#F43F5E' }}
+          >
+            A
+          </ToolbarButton>
+          <select
+            className="border rounded px-1 py-0.5 text-sm"
+            onChange={e => editor.chain().focus().setFontFamily(e.target.value).run()}
+            value={editor.getAttributes('fontFamily').fontFamily || ''}
+          >
+            <option value="">Font</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Verdana">Verdana</option>
+          </select>
+          <input
+            type="color"
+            className="w-6 h-6 p-0 border rounded"
+            onChange={e => editor.chain().focus().setColor(e.target.value).run()}
+            title="Text Color"
+          />
+          <ToolbarButton
+            onClick={() => fileInputRef.current.click()}
+            label="Insert Image"
+          >
+            🖼️
+          </ToolbarButton>
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleImageUpload}
+          />
+          <ToolbarButton
+            onClick={handleYouTubeEmbed}
+            label="Embed YouTube"
+          >
+            ▶️
+          </ToolbarButton>
+        </div>
+      )}
       <EditorContent editor={editor} />
       <style jsx global>{`
         .tiptap-wrapper .ProseMirror {
