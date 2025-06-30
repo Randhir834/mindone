@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '../utils/auth';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
+import Head from 'next/head';
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
@@ -29,6 +30,9 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <AuthProvider>
+      <Head>
+        <title>Knowledge Base Platform</title>
+      </Head>
       <div>
         <Component {...pageProps} onOpenSearch={() => router.push('/search')} />
         <Toaster position="bottom-right" />

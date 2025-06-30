@@ -72,7 +72,7 @@ export default function PublicDocument() {
   return (
     <>
       <Head>
-        <title>{document.title} - Public Document</title>
+        <title>{document.title} - Knowledge Base Platform</title>
         <meta name="description" content={`Public document: ${document.title}`} />
       </Head>
       
