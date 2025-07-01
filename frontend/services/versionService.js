@@ -1,6 +1,6 @@
 import { authHeader } from '../utils/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL|| "https://mindone-backend.onrender.com/api";
 
 /**
  * Get version history for a document
