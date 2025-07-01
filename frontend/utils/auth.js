@@ -134,3 +134,10 @@ export const isTokenExpired = (token) => {
     return true;
   }
 };
+
+// Add this if missing
+export function authHeader() {
+  // Example: get token from localStorage and return header
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
