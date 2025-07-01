@@ -93,4 +93,22 @@ Desktop.ini
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Ignore common large file types
+*.png
+*.jpeg
+*.jpg
+*.gif
+*.mp4
+*.mov
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.exe
+*.dll
+*.iso
+
+# Ignore backend uploads directory
+backend/public/uploads/ 
