@@ -12,7 +12,7 @@ const app = express();
 
 // Middleware - Allow all origins for development
 app.use(cors({
-  origin: true, // Allow all origins
+  origin: process.env.FRONTEND_URL || true,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
