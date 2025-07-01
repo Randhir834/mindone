@@ -27,6 +27,10 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });
 });
 
+app.get('/', (req, res) => {
+  res.send('Hello from Express on Vercel!');
+});
+
 // Connect to MongoDB and start server
 const startServer = async () => {
   try {
