@@ -36,6 +36,9 @@ function MyApp({ Component, pageProps }) {
       <div>
         <Component {...pageProps} onOpenSearch={() => router.push('/search')} />
         <Toaster position="bottom-right" />
+        <footer style={{ textAlign: 'center', padding: '1rem 0', color: '#888', fontSize: '0.95rem' }}>
+          &copy; {new Date().getFullYear()} Knowledge Base Platform. All rights reserved.
+        </footer>
       </div>
     </AuthProvider>
   );

@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { formatDistanceToNow } from 'date-fns';
+import DOMPurify from 'dompurify';
 
 export default function DocumentCard({ document }) {
   const router = useRouter();
@@ -57,8 +58,37 @@ export default function DocumentCard({ document }) {
     );
   };
 
-  // Strip HTML for a plain text preview
-  const plainTextContent = document.content ? document.content.replace(/<[^>]*>?/gm, '') : '';
+  // Sanitize and trim HTML for a styled preview (mentions, etc.)
+  let htmlPreview = '';
+  if (typeof window !== 'undefined' && document.content) {
+    // Use DOMParser to safely parse HTML in the browser
+    const parser = new window.DOMParser();
+    const doc = parser.parseFromString(document.content, 'text/html');
+    let charCount = 0;
+    let result = '';
+    function traverse(node) {
+      if (charCount >= 200) return;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const remaining = 200 - charCount;
+        const text = node.textContent.slice(0, remaining);
+        charCount += text.length;
+        result += text;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        // Keep mention styling, but not other tags
+        if (node.classList.contains && node.classList.contains('mention')) {
+          result += `<span class=\"mention\">${node.textContent.slice(0, 200 - charCount)}</span>`;
+          charCount += node.textContent.length;
+        } else {
+          for (let child of node.childNodes) {
+            traverse(child);
+            if (charCount >= 200) break;
+          }
+        }
+      }
+    }
+    traverse(doc.body);
+    htmlPreview = DOMPurify.sanitize(result) + (charCount >= 200 ? '...' : '');
+  }
 
   return (
     <div 
@@ -89,7 +119,11 @@ export default function DocumentCard({ document }) {
           </h3>
 
           <p className="text-gray-600 text-sm mb-4 line-clamp-4 flex-grow group-hover:text-gray-800 transition-colors duration-300 h-[5rem]">
-            {plainTextContent ? plainTextContent.substring(0, 200) + (plainTextContent.length > 200 ? '...' : '') : 'No content'}
+            {htmlPreview ? (
+              <span dangerouslySetInnerHTML={{ __html: htmlPreview }} />
+            ) : (
+              'No content'
+            )}
           </p>
 
           <div className="flex items-center justify-between text-sm mt-auto pt-4 border-t border-gray-100">
