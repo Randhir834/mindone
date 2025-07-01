@@ -7,6 +7,8 @@ const crypto = require("crypto");
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "2h";
 
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
 // REGISTER USER
 exports.register = async (req, res) => {
   try {
@@ -18,18 +20,28 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = generateOTP();
+    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
 
     const user = new User({
       name,
       email,
       password: hashedPassword,
+      otp,
+      otpExpiry,
+      isVerified: false
     });
 
     await user.save();
 
-    // Don't generate JWT token - user needs to login explicitly
+    // Send OTP email
+    const emailSubject = "Verify your account";
+    const emailText = `Your OTP is: ${otp}`;
+    const emailHtml = `<div style='font-family: Arial, sans-serif;'><h2>Account Verification</h2><p>Your OTP is: <b>${otp}</b></p><p>This code will expire in 10 minutes.</p></div>`;
+    await sendEmail(user.email, emailSubject, emailText, emailHtml);
+
     res.status(201).json({ 
-      message: "User registered successfully. Please login to continue.",
+      message: "User registered successfully. Please verify your email with the OTP sent.",
       user: {
         id: user._id,
         email: user.email,
@@ -41,6 +53,29 @@ exports.register = async (req, res) => {
   }
 };
 
+// VERIFY OTP
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+    if (!user.otp || !user.otpExpiry || user.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: 'OTP expired or not set' });
+    }
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+    res.json({ message: 'Account verified successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // LOGIN USER
 exports.login = async (req, res) => {
   try {
@@ -48,6 +83,7 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user.isVerified) return res.status(403).json({ message: "Please verify your account with the OTP sent to your email." });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
@@ -173,5 +209,49 @@ exports.searchUsers = async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
+  }
+};
+
+/**
+ * @desc    Get current user's profile
+ * @route   GET /api/auth/profile
+ * @access  Private
+ */
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('id name email');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * @desc    Change password for logged-in user
+ * @route   PUT /api/auth/change-password
+ * @access  Private
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new password are required' });
+    }
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

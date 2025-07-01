@@ -2,12 +2,28 @@ import { useRouter } from 'next/router';
 import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
 
-export default function DocumentCard({ document }) {
+export default function DocumentCard({ document, currentUserId, onDelete }) {
   const router = useRouter();
 
   const handleClick = () => {
     // Navigate to the specific document page
     router.push(`/documents/${document._id}`);
+  };
+
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
+    try {
+      await import('../services/documentService').then(({ documentService }) => documentService.deleteDocument(document._id));
+      if (onDelete) onDelete(document._id);
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.success('Document deleted successfully!');
+      }
+    } catch (error) {
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.error(error.msg || 'Failed to delete document.');
+      }
+    }
   };
 
   const getVisibilityIcon = (visibility) => {

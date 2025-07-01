@@ -107,6 +107,36 @@ export const authService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to mark notifications as read' };
     }
+  },
+
+  // NEW: Get current user profile
+  async getProfile() {
+    try {
+      const response = await api.get('/auth/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch profile' };
+    }
+  },
+
+  // NEW: Change password for logged-in user
+  async changePassword(currentPassword, newPassword) {
+    try {
+      const response = await api.put('/auth/change-password', { currentPassword, newPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to change password' };
+    }
+  },
+
+  // NEW: Verify OTP after registration
+  async verifyOtp(email, otp) {
+    try {
+      const response = await api.post('/auth/verify-otp', { email, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'OTP verification failed' };
+    }
   }
 };
 

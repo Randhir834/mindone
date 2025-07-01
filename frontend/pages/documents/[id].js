@@ -99,7 +99,6 @@ export default function DocumentDetail() {
       setLastSavedAt(new Date());
       setHasUnsavedChanges(false);
       saveAttempts.current = 0;
-      
       toast.success('Changes saved', { id: 'autosave-toast', duration: 2000, icon: '✓' });
     } catch (error) {
       saveAttempts.current += 1;
@@ -176,6 +175,17 @@ export default function DocumentDetail() {
     toast.success('Document restored to previous version');
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
+    try {
+      await documentService.deleteDocument(id);
+      toast.success('Document deleted successfully!');
+      router.push('/dashboard');
+    } catch (error) {
+      toast.error(error.msg || 'Failed to delete document.');
+    }
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div></div>;
   }
@@ -219,7 +229,6 @@ export default function DocumentDetail() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Notifications />
               <button
                 onClick={() => setShowVersionHistory(!showVersionHistory)}
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-600 text-white hover:bg-gray-700"
@@ -239,7 +248,7 @@ export default function DocumentDetail() {
                   onClick={copyPublicLink}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
                 >
-                  Copy Public Link
+                  Copy Link
                 </button>
               )}
               {canEdit && (
@@ -259,6 +268,15 @@ export default function DocumentDetail() {
                     className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-gray-300"
                   >Save</button>
                 </>
+              )}
+              {isAuthor && (
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+                  title="Delete Document"
+                >
+                  Delete
+                </button>
               )}
             </div>
           </nav>

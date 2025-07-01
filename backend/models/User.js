@@ -42,6 +42,13 @@ const userSchema = new mongoose.Schema({
   },
   resetToken: String,
   resetTokenExpiry: Date,
+  // OTP verification fields
+  otp: String,
+  otpExpiry: Date,
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
   // ADDED: Array to store in-app notifications
   notifications: [notificationSchema]
 }, { timestamps: true });

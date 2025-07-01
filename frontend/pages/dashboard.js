@@ -6,14 +6,16 @@ import { useAuth } from '../utils/auth';
 import DocumentCard from '../components/DocumentCard';
 import { documentService } from '../services/documentService';
 import Notifications from '../components/Notifications';
+import ProfileModal from '../components/ProfileModal';
 
 export default function Dashboard() {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [search, setSearch] = useState('');
-  const { isAuthenticated, logout, getToken } = useAuth();
+  const { isAuthenticated, logout, getToken, user } = useAuth();
   const router = useRouter();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => { setIsClient(true); }, []);
   
@@ -82,6 +84,17 @@ export default function Dashboard() {
     doc.title?.toLowerCase().includes(search.toLowerCase()) ||
     doc.content?.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Add a handler to remove a document from the list after deletion
+  const handleDeleteDocument = (deletedId) => {
+    setDocuments((docs) => docs.filter((doc) => doc._id !== deletedId));
+    toast.success('Document deleted successfully!');
+  };
+
+  // Make toast globally available for DocumentCard
+  if (typeof window !== 'undefined') {
+    window.toast = toast;
+  }
 
   if (!isClient || !isAuthenticated) {
     return (
@@ -161,7 +174,15 @@ export default function Dashboard() {
               <div className="h-[50px] flex items-center">
                 <Notifications />
               </div>
-              
+              <button
+                onClick={() => setIsProfileOpen(true)}
+                className="h-[50px] px-6 rounded-xl font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group hover:scale-[1.02] hover:shadow-indigo-500/20"
+              >
+                <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                My Profile
+              </button>
               <button
                 onClick={handleLogout}
                 className="h-[50px] px-6 rounded-xl font-medium text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group hover:scale-[1.02] hover:shadow-rose-500/20"
@@ -208,7 +229,11 @@ export default function Dashboard() {
                 style={{ animationDelay: `${idx * 100}ms` }} 
                 className="animate-fadeInUp transform hover:scale-105 transition-all duration-300"
               >
-                <DocumentCard document={document} />
+                <DocumentCard 
+                  document={document} 
+                  currentUserId={user?.id || user?._id} 
+                  onDelete={handleDeleteDocument} 
+                />
               </div>
             ))}
           </div>
@@ -239,6 +264,7 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }
