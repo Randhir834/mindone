@@ -63,6 +63,67 @@ The @mention system allows users to mention other users in documents, which auto
 - **Nodemailer**: Email functionality
 - **bcryptjs**: Password hashing
 
+## Project Structure
+
+```
+root/
+  backend/                  # Express.js backend server
+    config/                 # Database configuration
+      db.js
+    controllers/            # Route handler logic
+      authController.js     # Auth-related logic
+      documentController.js # Document CRUD logic
+      notificationController.js # Notification logic
+    middleware/             # Express middleware
+      auth.js               # Auth middleware (JWT)
+    models/                 # Mongoose models
+      Document.js           # Document schema
+      DocumentVersion.js    # Versioning schema
+      User.js               # User schema
+    routes/                 # API route definitions
+      auth.js
+      documents.js
+      notifications.js
+    utils/                  # Utility/helper functions
+      email.js              # Email sending logic
+      versionControl.js     # Version control helpers
+    server.js               # Entry point for backend
+    package.json            # Backend dependencies
+    ...
+  frontend/                 # Next.js frontend app
+    components/             # React UI components
+      DocumentCard.js
+      Editor.js
+      MentionList.js
+      Notifications.js
+      SharingManager.js
+      VersionHistory.js
+    pages/                  # Next.js pages/routes
+      _app.js
+      dashboard.js
+      documents/
+        [id].js
+        create.js
+        public/
+          [id].js
+      ...
+    services/               # API service wrappers
+      authService.js
+      documentService.js
+      notificationService.js
+      userService.js
+      versionService.js
+    styles/                 # Global styles (Tailwind)
+      globals.css
+    utils/                  # Frontend utility functions
+      auth.js
+    package.json            # Frontend dependencies
+    ...
+  README.md                 # Project documentation
+  setup.sh                  # Setup script
+  ...
+```
+
 ## Getting Started
 
 ### Prerequisites
