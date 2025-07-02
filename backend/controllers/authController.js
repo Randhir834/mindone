@@ -1,28 +1,38 @@
+// Import required dependencies
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/email");
 const crypto = require("crypto");
 
+// JWT configuration constants
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "2h";
 
+// Helper function to generate a 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// REGISTER USER
+/**
+ * @desc    Register a new user
+ * @route   POST /api/auth/register
+ * @access  Public
+ */
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Hash password and generate OTP
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOTP();
-    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
 
+    // Create new user
     const user = new User({
       name,
       email,
@@ -34,12 +44,13 @@ exports.register = async (req, res) => {
 
     await user.save();
 
-    // Send OTP email
+    // Prepare and send verification email with OTP
     const emailSubject = "Verify your account";
     const emailText = `Your OTP is: ${otp}`;
     const emailHtml = `<div style='font-family: Arial, sans-serif;'><h2>Account Verification</h2><p>Your OTP is: <b>${otp}</b></p><p>This code will expire in 10 minutes.</p></div>`;
     await sendEmail(user.email, emailSubject, emailText, emailHtml);
 
+    // Return success response without sensitive data
     res.status(201).json({ 
       message: "User registered successfully. Please verify your email with the OTP sent.",
       user: {
@@ -53,10 +64,15 @@ exports.register = async (req, res) => {
   }
 };
 
-// VERIFY OTP
+/**
+ * @desc    Verify user's email with OTP
+ * @route   POST /api/auth/verify-otp
+ * @access  Public
+ */
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    // Find user and validate OTP
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
@@ -66,6 +82,7 @@ exports.verifyOtp = async (req, res) => {
     if (user.otp !== otp) {
       return res.status(400).json({ message: 'Invalid OTP' });
     }
+    // Mark user as verified and clear OTP data
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
@@ -76,20 +93,28 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-// LOGIN USER
+/**
+ * @desc    Authenticate user and get token
+ * @route   POST /api/auth/login
+ * @access  Public
+ */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check user exists and is verified
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
     if (!user.isVerified) return res.status(403).json({ message: "Please verify your account with the OTP sent to your email." });
 
+    // Validate password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
+    // Generate JWT token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+    // Return token and user data
     res.json({
       token,
       user: {
@@ -103,27 +128,33 @@ exports.login = async (req, res) => {
   }
 };
 
-// FORGOT PASSWORD
+/**
+ * @desc    Send password reset email
+ * @route   POST /api/auth/forgot-password
+ * @access  Public
+ */
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // Find user but don't reveal if they exist
     const user = await User.findOne({ email });
     if (!user) {
-      // Don't reveal if user exists or not for security
+      // Security: Same response whether user exists or not
       return res.json({ message: "If an account with that email exists, a reset link has been sent" });
     }
 
+    // Generate reset token
     const token = crypto.randomBytes(20).toString("hex");
     user.resetToken = token;
-    user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    user.resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
     await user.save();
 
-    // Create reset URL - use environment variable or default
+    // Create reset URL using environment config
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
     
-    // Create email content
+    // Prepare email content
     const emailSubject = "Password Reset Request";
     const emailText = `You requested a password reset. Please click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`;
     const emailHtml = `
@@ -137,14 +168,14 @@ exports.forgotPassword = async (req, res) => {
       </div>
     `;
 
-    // Send email
+    // Send reset email
     const emailSent = await sendEmail(user.email, emailSubject, emailText, emailHtml);
     
     if (emailSent) {
       console.log(`Password reset email sent to ${user.email}`);
       res.json({ message: "If an account with that email exists, a reset link has been sent" });
     } else {
-      // If email fails, remove the reset token
+      // Clean up if email fails
       user.resetToken = undefined;
       user.resetTokenExpiry = undefined;
       await user.save();
@@ -158,12 +189,17 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// RESET PASSWORD
+/**
+ * @desc    Reset password using token
+ * @route   POST /api/auth/reset-password/:token
+ * @access  Public
+ */
 exports.resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { password } = req.body;
 
+    // Find user with valid reset token
     const user = await User.findOne({
       resetToken: token,
       resetTokenExpiry: { $gt: Date.now() },
@@ -171,6 +207,7 @@ exports.resetPassword = async (req, res) => {
 
     if (!user) return res.status(400).json({ message: "Invalid or expired token" });
 
+    // Update password and clear reset token
     user.password = await bcrypt.hash(password, 10);
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
@@ -219,6 +256,7 @@ exports.searchUsers = async (req, res) => {
  */
 exports.getProfile = async (req, res) => {
   try {
+    // Fetch user data excluding sensitive fields
     const user = await User.findById(req.userId).select('id name email');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -237,17 +275,21 @@ exports.getProfile = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    // Validate request data
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current and new password are required' });
     }
+    // Find and verify user
     const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    // Verify current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
+    // Update password
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
     res.json({ message: 'Password changed successfully' });
@@ -255,3 +297,4 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+

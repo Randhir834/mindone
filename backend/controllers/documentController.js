@@ -3,21 +3,24 @@ const User = require('../models/User');
 const { createVersion, getVersionHistory, getVersion, compareVersions, restoreVersion } = require('../utils/versionControl');
 
 /**
- * Parses HTML content to extract all mentioned user IDs from 'data-mention' attributes.
+ * Helper function to extract user IDs from document content mentions
  * @param {string} content - The HTML content of the document.
  * @returns {Set<string>} A Set of unique user IDs that were mentioned.
+ * @description Parses HTML content to find all user IDs in data-mention attributes
  */
 const extractMentionedIds = (content) => {
     if (!content) return new Set();
     
     const ids = new Set();
+    // Regex to match data-mention attributes in HTML
     const mentionRegex = /data-mention="([^"]+)"/g;
     let match;
     
     console.log('Extracting mentions from content:', content.substring(0, 200) + '...');
     
+    // Extract all mentions using regex
     while ((match = mentionRegex.exec(content)) !== null) {
-        // match[1] is the captured group (the user ID)
+        // match[1] contains the captured user ID
         const userId = match[1];
         if (userId && userId.trim()) {
             ids.add(userId.trim());
@@ -30,45 +33,48 @@ const extractMentionedIds = (content) => {
 };
 
 /**
- * Processes mentions, auto-shares the document, and sends in-app notifications.
- * @param {object} document - The mongoose document being saved.
- * @param {string} newContent - The new content for the document.
- * @param {string} oldContent - The previous content of the document.
- * @param {string} authorId - The ID of the user saving the document.
+ * Helper function to handle document mentions
+ * @param {object} document - The mongoose document being saved
+ * @param {string} newContent - New document content
+ * @param {string} oldContent - Previous document content
+ * @param {string} authorId - ID of the user making the changes
+ * @description Processes new mentions, shares document with mentioned users, and sends notifications
  */
 const processMentions = async (document, newContent, oldContent, authorId) => {
     try {
+        // Extract mentions from both old and new content
         const newMentionIds = extractMentionedIds(newContent);
         const oldMentionIds = extractMentionedIds(oldContent);
 
-        // Determine who is newly mentioned by finding IDs in the new set but not the old one.
+        // Find only the newly added mentions
         const newlyMentionedIds = [...newMentionIds].filter(id => !oldMentionIds.has(id));
 
         if (newlyMentionedIds.length === 0) {
-            return; // No new mentions to process
+            return; // Exit if no new mentions
         }
 
         console.log(`Found ${newlyMentionedIds.length} new mentions.`);
 
+        // Process each newly mentioned user
         for (const userId of newlyMentionedIds) {
             try {
-                // A user cannot mention themselves to gain access.
+                // Skip if user mentions themselves
                 if (userId === authorId.toString()) {
                     continue;
                 }
 
-                // Check if the user is already in the sharedWith list to avoid duplicates.
+                // Check for existing share permissions
                 const isAlreadyShared = document.sharedWith.some(
                     share => share.user.toString() === userId
                 );
 
+                // Auto-share document if not already shared
                 if (!isAlreadyShared) {
-                    // Auto-Share Document with read-only access.
                     document.sharedWith.push({ user: userId, permission: 'view' });
                     console.log(`Auto-sharing document "${document.title}" with user ${userId}`);
                 }
 
-                // Create and push an in-app notification.
+                // Prepare notification object
                 const notification = {
                     documentId: document._id,
                     mentionedBy: authorId,
@@ -76,20 +82,20 @@ const processMentions = async (document, newContent, oldContent, authorId) => {
                     read: false
                 };
 
-                // Add notification to the mentioned user's 'notifications' array.
-                // Use updateOne instead of findByIdAndUpdate for better error handling
+                // Add notification to user's notifications array
                 const updateResult = await User.updateOne(
                     { _id: userId },
                     {
                         $push: { 
                             notifications: {
                                 $each: [notification],
-                                $position: 0 // Adds the new notification to the top of the list.
+                                $position: 0 // Add to start of array
                             }
                         }
                     }
                 );
                 
+                // Log notification status
                 if (updateResult.modifiedCount > 0) {
                     console.log(`Pushed in-app notification to user ${userId} for document ${document._id}`);
                 } else {
@@ -97,37 +103,35 @@ const processMentions = async (document, newContent, oldContent, authorId) => {
                 }
             } catch (userError) {
                 console.error(`Error processing mention for user ${userId}:`, userError);
-                // Continue processing other mentions even if one fails
-                // Don't throw the error to avoid affecting document creation
+                // Continue with other mentions if one fails
             }
         }
     } catch (error) {
         console.error('Error in processMentions:', error);
-        // Don't re-throw the error to avoid affecting document creation
-        // Just log it and continue
+        // Log error but don't throw to prevent document save failure
     }
 };
 
 /**
- * @desc    Create a new document
+ * @desc    Create a new document with version control and mention processing
  * @route   POST /api/documents
  * @access  Private
  */
 exports.createDocument = async (req, res) => {
   const { title, content, visibility } = req.body;
   try {
-    // Step 1: Create and save the document first to get an _id.
+    // Step 1: Initial document creation
     let newDocument = new Document({
       title,
       content,
       visibility,
-      author: req.userId // Attached from 'protect' middleware
+      author: req.userId
     });
     
-    // Initial save to generate the document's _id
+    // Save to generate document ID
     await newDocument.save();
 
-    // Step 2: Create the initial version
+    // Step 2: Create initial version record
     await createVersion(
       newDocument._id,
       { title, content, visibility },
@@ -135,22 +139,17 @@ exports.createDocument = async (req, res) => {
       'Document created'
     );
 
-    // Step 3: Now that the document has an _id, process mentions.
-    // This will modify the newDocument object in memory.
-    // IMPORTANT: We don't want mention processing to fail the document creation
+    // Step 3: Process any mentions in content
     if (content && content.includes('data-mention')) {
       try {
         await processMentions(newDocument, content, '', req.userId);
-        // Save again only if mentions were processed successfully
         await newDocument.save();
       } catch (mentionError) {
         console.error('Error processing mentions (non-fatal):', mentionError);
-        // Document creation succeeds even if mention processing fails
-        // The document is already saved from step 1
       }
     }
 
-    // Step 4: Return the saved document
+    // Step 4: Return populated document
     const savedDocument = await Document.findById(newDocument._id)
       .populate('author', 'name email')
       .populate('sharedWith.user', 'name email');
@@ -163,7 +162,7 @@ exports.createDocument = async (req, res) => {
 };
 
 /**
- * @desc    Update a document (for auto-save)
+ * @desc    Update document content with version control and mention processing
  * @route   PUT /api/documents/:id
  * @access  Private
  */
@@ -172,11 +171,12 @@ exports.updateDocument = async (req, res) => {
     const { title, content, visibility } = req.body;
     let document = await Document.findById(req.params.id);
 
+    // Validate document exists
     if (!document) {
         return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to edit
+    // Check user permissions
     const isAuthor = document.author.toString() === req.userId;
     const canEdit = document.sharedWith.find(
         share => share.user.toString() === req.userId && share.permission === 'edit'
@@ -186,24 +186,24 @@ exports.updateDocument = async (req, res) => {
         return res.status(403).json({ msg: 'User not authorized to update this document' });
     }
 
-    // Store old content before updating to find *new* mentions
+    // Store original values for version control
     const oldContent = document.content;
     const oldTitle = document.title;
     const oldVisibility = document.visibility;
 
-    // Update fields if they are provided in the request
+    // Update document fields
     if (title !== undefined) document.title = title;
     if (content !== undefined) document.content = content;
     if (visibility !== undefined) document.visibility = visibility;
     
-    // Process any new mentions if content was updated
+    // Process mentions if content changed
     if (content !== undefined) {
         await processMentions(document, content, oldContent, req.userId);
     }
 
     const updatedDocument = await document.save();
 
-    // Create a new version if there are significant changes
+    // Create version if significant changes made
     const hasSignificantChanges = 
       content !== undefined && content !== oldContent ||
       title !== undefined && title !== oldTitle ||
@@ -229,52 +229,51 @@ exports.updateDocument = async (req, res) => {
 };
 
 /**
- * @desc    Share a document with another user
+ * @desc    Share document with another user
  * @route   POST /api/documents/:id/share
- * @access  Private
+ * @access  Private (Author only)
  */
 exports.shareDocument = async (req, res) => {
   try {
     const { userId, permission } = req.body;
     const documentId = req.params.id;
 
-    // Validate permission
+    // Validate permission value
     if (!['view', 'edit'].includes(permission)) {
       return res.status(400).json({ msg: 'Permission must be either "view" or "edit"' });
     }
 
+    // Find and validate document
     const document = await Document.findById(documentId);
     if (!document) {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to share this document
+    // Verify author permission
     const isAuthor = document.author.toString() === req.userId;
     if (!isAuthor) {
       return res.status(403).json({ msg: 'Only the document author can share the document' });
     }
 
-    // Check if user is trying to share with themselves
+    // Prevent self-sharing
     if (userId === req.userId) {
       return res.status(400).json({ msg: 'Cannot share document with yourself' });
     }
 
-    // Check if the target user exists
+    // Verify target user exists
     const targetUser = await User.findById(userId);
     if (!targetUser) {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    // Check if already shared with this user
+    // Update or add sharing permission
     const existingShare = document.sharedWith.find(
       share => share.user.toString() === userId
     );
 
     if (existingShare) {
-      // Update existing permission
       existingShare.permission = permission;
     } else {
-      // Add new share
       document.sharedWith.push({ user: userId, permission });
     }
 
@@ -287,7 +286,7 @@ exports.shareDocument = async (req, res) => {
   }
 };
 
-// --- UNCHANGED FUNCTIONS ---
+// --- DOCUMENT ACCESS AND RETRIEVAL FUNCTIONS ---
 
 /**
  * @desc    Get all documents accessible by user
@@ -296,6 +295,7 @@ exports.shareDocument = async (req, res) => {
  */
 exports.getDocuments = async (req, res) => {
   try {
+    // Find documents that are either public, authored by user, or shared with user
     const documents = await Document.find({
       $or: [
         { visibility: 'public' },
@@ -312,12 +312,13 @@ exports.getDocuments = async (req, res) => {
 };
 
 /**
- * @desc    Get a single document by ID
+ * @desc    Get a single document by ID with access control
  * @route   GET /api/documents/:id
- * @access  Private (with logic for public access)
+ * @access  Private (with public access logic)
  */
 exports.getDocumentById = async (req, res) => {
   try {
+    // Find and populate document details
     const document = await Document.findById(req.params.id)
       .populate('author', 'name email')
       .populate('sharedWith.user', 'name email');
@@ -326,6 +327,7 @@ exports.getDocumentById = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
+    // Check access permissions
     const isAuthor = document.author._id.toString() === req.userId;
     const isSharedWith = document.sharedWith.some(
       share => share.user._id.toString() === req.userId
@@ -343,7 +345,7 @@ exports.getDocumentById = async (req, res) => {
 };
 
 /**
- * @desc    Delete a document
+ * @desc    Delete a document (author only)
  * @route   DELETE /api/documents/:id
  * @access  Private
  */
@@ -351,10 +353,12 @@ exports.deleteDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
 
+    // Validate document exists
     if (!document) {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
+    // Verify author permission
     if (document.author.toString() !== req.userId) {
       return res.status(401).json({ msg: 'User not authorized to delete this document' });
     }
@@ -368,17 +372,19 @@ exports.deleteDocument = async (req, res) => {
 };
 
 /**
- * @desc    Search documents
+ * @desc    Search documents with text index
  * @route   GET /api/documents/search?q=query
  * @access  Private
  */
 exports.searchDocuments = async (req, res) => {
     try {
         const query = req.query.q;
+        // Validate search query
         if (!query) {
             return res.status(400).json({ msg: 'Search query is required' });
         }
 
+        // Search with text index and access control
         const documents = await Document.find({
             $text: { $search: query },
             $or: [
@@ -396,12 +402,13 @@ exports.searchDocuments = async (req, res) => {
 };
 
 /**
- * @desc    Get a public document by ID (no authentication required)
+ * @desc    Get public document without authentication
  * @route   GET /api/documents/public/:id
  * @access  Public
  */
 exports.getPublicDocument = async (req, res) => {
   try {
+    // Find and populate document details
     const document = await Document.findById(req.params.id)
       .populate('author', 'name email')
       .populate('sharedWith.user', 'name email');
@@ -410,7 +417,7 @@ exports.getPublicDocument = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Only allow access to public documents
+    // Verify document is public
     if (document.visibility !== 'public') {
       return res.status(403).json({ msg: 'This document is not publicly accessible' });
     }
@@ -423,26 +430,27 @@ exports.getPublicDocument = async (req, res) => {
 };
 
 /**
- * @desc    Remove a user from document sharing
+ * @desc    Remove user from document sharing
  * @route   DELETE /api/documents/:id/share/:userId
- * @access  Private
+ * @access  Private (Author only)
  */
 exports.removeSharedUser = async (req, res) => {
   try {
     const { id: documentId, userId } = req.params;
 
+    // Find and validate document
     const document = await Document.findById(documentId);
     if (!document) {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to manage sharing for this document
+    // Verify author permission
     const isAuthor = document.author.toString() === req.userId;
     if (!isAuthor) {
       return res.status(403).json({ msg: 'Only the document author can manage sharing' });
     }
 
-    // Check if the user is actually shared with this document
+    // Find shared user
     const existingShareIndex = document.sharedWith.findIndex(
       share => share.user.toString() === userId
     );
@@ -451,7 +459,7 @@ exports.removeSharedUser = async (req, res) => {
       return res.status(404).json({ msg: 'User is not shared with this document' });
     }
 
-    // Remove the user from sharedWith array
+    // Remove user from sharing
     document.sharedWith.splice(existingShareIndex, 1);
     await document.save();
 
@@ -462,8 +470,10 @@ exports.removeSharedUser = async (req, res) => {
   }
 };
 
+// --- VERSION CONTROL FUNCTIONS ---
+
 /**
- * @desc    Get version history for a document
+ * @desc    Get version history of a document
  * @route   GET /api/documents/:id/versions
  * @access  Private
  */
@@ -474,7 +484,7 @@ exports.getVersionHistory = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to view
+    // Check access permissions
     const isAuthor = document.author.toString() === req.userId;
     const canView = document.visibility === 'public' || 
                    document.sharedWith.find(share => share.user.toString() === req.userId);
@@ -483,6 +493,7 @@ exports.getVersionHistory = async (req, res) => {
       return res.status(403).json({ msg: 'User not authorized to view this document' });
     }
 
+    // Get version history with optional limit
     const versions = await getVersionHistory(req.params.id, parseInt(req.query.limit) || 50);
     res.json(versions);
   } catch (err) {
@@ -492,7 +503,7 @@ exports.getVersionHistory = async (req, res) => {
 };
 
 /**
- * @desc    Get a specific version of a document
+ * @desc    Get specific version of a document
  * @route   GET /api/documents/:id/versions/:version
  * @access  Private
  */
@@ -503,7 +514,7 @@ exports.getVersion = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to view
+    // Check access permissions
     const isAuthor = document.author.toString() === req.userId;
     const canView = document.visibility === 'public' || 
                    document.sharedWith.find(share => share.user.toString() === req.userId);
@@ -512,6 +523,7 @@ exports.getVersion = async (req, res) => {
       return res.status(403).json({ msg: 'User not authorized to view this document' });
     }
 
+    // Get specific version
     const version = await getVersion(req.params.id, parseInt(req.params.version));
     if (!version) {
       return res.status(404).json({ msg: 'Version not found' });
@@ -536,7 +548,7 @@ exports.compareVersions = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to view
+    // Check access permissions
     const isAuthor = document.author.toString() === req.userId;
     const canView = document.visibility === 'public' || 
                    document.sharedWith.find(share => share.user.toString() === req.userId);
@@ -545,6 +557,7 @@ exports.compareVersions = async (req, res) => {
       return res.status(403).json({ msg: 'User not authorized to view this document' });
     }
 
+    // Compare versions
     const diff = await compareVersions(
       req.params.id, 
       parseInt(req.params.version1), 
@@ -559,7 +572,7 @@ exports.compareVersions = async (req, res) => {
 };
 
 /**
- * @desc    Restore a document to a previous version
+ * @desc    Restore document to a previous version
  * @route   POST /api/documents/:id/restore/:version
  * @access  Private
  */
@@ -570,7 +583,7 @@ exports.restoreVersion = async (req, res) => {
       return res.status(404).json({ msg: 'Document not found' });
     }
 
-    // Check if user has permission to edit
+    // Check edit permissions
     const isAuthor = document.author.toString() === req.userId;
     const canEdit = document.sharedWith.find(
         share => share.user.toString() === req.userId && share.permission === 'edit'
@@ -580,13 +593,14 @@ exports.restoreVersion = async (req, res) => {
       return res.status(403).json({ msg: 'User not authorized to edit this document' });
     }
 
+    // Restore to specified version
     const restoredVersion = await restoreVersion(
       req.params.id, 
       parseInt(req.params.version), 
       req.userId
     );
 
-    // Update the main document with restored content
+    // Update main document with restored content
     document.title = restoredVersion.title;
     document.content = restoredVersion.content;
     document.visibility = restoredVersion.visibility;

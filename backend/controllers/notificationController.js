@@ -1,12 +1,15 @@
+// Import required models
 const User = require('../models/User');
 
 /**
- * @desc    Get notifications for current user
+ * @desc    Get all notifications for the authenticated user
  * @route   GET /api/notifications
  * @access  Private
+ * @description Retrieves user's notifications with populated document and user details
  */
 exports.getNotifications = async (req, res) => {
   try {
+    // Find user and populate notification references
     const user = await User.findById(req.userId).populate({
       path: 'notifications.documentId',
       select: 'title',
@@ -21,7 +24,7 @@ exports.getNotifications = async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    // Transform notifications, handling cases where a document might have been deleted
+    // Transform notifications to handle deleted documents
     const notifications = user.notifications
       .filter(notification => notification.documentId) // Filter out notifs for deleted docs
       .map(notification => ({
@@ -43,20 +46,22 @@ exports.getNotifications = async (req, res) => {
 };
 
 /**
- * @desc    Mark notification as read
+ * @desc    Mark a notification as read
  * @route   PUT /api/notifications/:id/read
  * @access  Private
+ * @description Updates a specific notification's read status to true
  */
 exports.markNotificationAsRead = async (req, res) => {
   try {
     const notificationId = req.params.id;
     
-    // Use a single atomic operation to update the notification
+    // Update notification status in a single atomic operation
     const result = await User.updateOne(
       { _id: req.userId, 'notifications._id': notificationId },
       { $set: { 'notifications.$.read': true } }
     );
 
+    // Check if notification was found and updated
     if (result.nModified === 0) {
       return res.status(404).json({ msg: 'Notification not found or already marked as read' });
     }
