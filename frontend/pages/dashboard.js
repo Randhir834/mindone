@@ -1,3 +1,12 @@
+/**
+ * Dashboard Page Component
+ * Main interface for document management:
+ * - Document listing and filtering
+ * - Document creation and deletion
+ * - Search functionality
+ * - User profile and notifications
+ * - Authentication state management
+ */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -9,16 +18,21 @@ import Notifications from '../components/Notifications';
 import ProfileModal from '../components/ProfileModal';
 
 export default function Dashboard() {
+  // State management
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [search, setSearch] = useState('');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+  // Auth and routing hooks
   const { isAuthenticated, logout, getToken, user } = useAuth();
   const router = useRouter();
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Handle client-side mounting
   useEffect(() => { setIsClient(true); }, []);
   
+  // Authentication check and redirect
   useEffect(() => { 
     if (isClient && !isAuthenticated) {
       console.log('Not authenticated, redirecting to login...');
@@ -26,6 +40,7 @@ export default function Dashboard() {
     }
   }, [isClient, isAuthenticated, router]);
   
+  // Fetch documents on component mount
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
@@ -54,6 +69,7 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isClient, getToken]);
 
+  // Handle document creation navigation
   const handleCreateDocument = (e) => {
     e.preventDefault(); // Prevent default button behavior
     console.log('Create document clicked, navigating...');
@@ -68,6 +84,7 @@ export default function Dashboard() {
     }
   };
 
+  // Handle user logout
   const handleLogout = async () => {
     try {
       logout();
@@ -79,13 +96,13 @@ export default function Dashboard() {
     }
   };
 
-  // Filtered documents for search
+  // Filter documents based on search query
   const filteredDocs = documents.filter(doc =>
     doc.title?.toLowerCase().includes(search.toLowerCase()) ||
     doc.content?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Add a handler to remove a document from the list after deletion
+  // Handle document deletion from list
   const handleDeleteDocument = (deletedId) => {
     setDocuments((docs) => docs.filter((doc) => doc._id !== deletedId));
     toast.success('Document deleted successfully!');
@@ -96,6 +113,7 @@ export default function Dashboard() {
     window.toast = toast;
   }
 
+  // Show loading state while authenticating
   if (!isClient || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
@@ -106,10 +124,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col">
-      {/* Enhanced Header Section */}
+      {/* Header Section with Navigation */}
       <div className="mb-10 px-4 sm:px-6 lg:px-8 pt-6">
         <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden border border-indigo-100 animate-fadeInUp">
-          {/* Enhanced Decorative Elements */}
+          {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 -mt-8 -mr-8 opacity-10">
             <svg className="w-40 h-40 text-indigo-500 transform rotate-12" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
@@ -121,6 +139,7 @@ export default function Dashboard() {
             </svg>
           </div>
           
+          {/* Header Title and Icon */}
           <div className="flex items-center gap-6">
             <div className="flex-shrink-0 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-4 shadow-lg animate-float group transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20">
               <svg className="h-12 w-12 text-white transform group-hover:rotate-12 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,8 +152,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Enhanced Navigation Bar with Search */}
+          {/* Navigation Bar with Search and Actions */}
           <nav className="flex flex-col md:flex-row items-stretch gap-4 mt-6 md:mt-0">
+            {/* Search Input */}
             <div className="relative flex-1 md:w-64 min-w-[200px]">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,6 +168,7 @@ export default function Dashboard() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+              {/* Clear Search Button */}
               {search && (
                 <button
                   onClick={() => setSearch('')}
@@ -160,6 +181,7 @@ export default function Dashboard() {
               )}
             </div>
             
+            {/* Create Document Button */}
             <Link
               href="/documents/create"
               className="h-[50px] px-6 rounded-xl font-medium text-white bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group hover:scale-[1.02] hover:shadow-emerald-500/20"
@@ -170,10 +192,13 @@ export default function Dashboard() {
               Create Document
             </Link>
 
+            {/* User Actions */}
             <div className="flex items-center gap-2">
+              {/* Notifications Component */}
               <div className="h-[50px] flex items-center">
                 <Notifications />
               </div>
+              {/* Profile Button */}
               <button
                 onClick={() => setIsProfileOpen(true)}
                 className="h-[50px] px-6 rounded-xl font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group hover:scale-[1.02] hover:shadow-indigo-500/20"
@@ -183,6 +208,7 @@ export default function Dashboard() {
                 </svg>
                 My Profile
               </button>
+              {/* Logout Button */}
               <button
                 onClick={handleLogout}
                 className="h-[50px] px-6 rounded-xl font-medium text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group hover:scale-[1.02] hover:shadow-rose-500/20"
@@ -197,9 +223,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Enhanced Main Content */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl mx-auto py-8 px-4 sm:px-8 lg:px-12 w-full">
-        {/* Enhanced Action Bar */}
+        {/* Document Count Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 animate-fadeInUp">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -211,8 +237,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Enhanced Loading State */}
+        {/* Document List Section */}
         {isLoading ? (
+          // Loading State
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
               <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-gray-200">
@@ -222,6 +249,7 @@ export default function Dashboard() {
             </div>
           </div>
         ) : filteredDocs.length > 0 ? (
+          // Document Grid
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-fadeInUp">
             {filteredDocs.map((document, idx) => (
               <div 
@@ -238,6 +266,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
+          // Empty State
           <div className="text-center py-16 animate-fadeInUp">
             <div className="max-w-md mx-auto bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-indigo-50">
               <div className="mb-6">
@@ -264,12 +293,13 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+      {/* Profile Modal */}
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }
 
-// Animations (add to globals.css if not present):
+// Animation Classes:
 // .animate-fadeInUp { animation: fadeInUp 0.7s both; }
 // .animate-bounceIn { animation: bounceIn 0.7s both; }
 // .animate-pulseGlow { animation: pulseGlow 2s infinite; }
