@@ -50,6 +50,46 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * Downloads a document as PDF
+ * @param {string} documentId - The ID of the document to download
+ * @returns {Promise<Blob>} - Returns a promise that resolves to a PDF blob
+ */
+const downloadPDF = async (documentId) => {
+  try {
+    console.log('Starting PDF download for document:', documentId);
+    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/pdf`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${Cookies.get('token')}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('PDF download failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData
+      });
+      throw new Error(errorData.msg || 'Failed to download PDF');
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/pdf')) {
+      console.error('Invalid content type received:', contentType);
+      throw new Error('Server did not return a PDF file');
+    }
+
+    console.log('PDF download successful');
+    const blob = await response.blob();
+    return blob;
+  } catch (error) {
+    console.error('Error in downloadPDF:', error);
+    throw error;
+  }
+};
+
 export const documentService = {
   /**
    * Create a new document
@@ -205,5 +245,7 @@ export const documentService = {
     } catch (error) {
       throw error.response?.data || { msg: 'Failed to remove user from document sharing' };
     }
-  }
+  },
+
+  downloadPDF
 };

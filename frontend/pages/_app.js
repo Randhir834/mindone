@@ -12,6 +12,8 @@ import { AuthProvider } from '../utils/auth';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import Head from 'next/head';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
@@ -54,6 +56,18 @@ function MyApp({ Component, pageProps }) {
           &copy; {new Date().getFullYear()} Knowledge Base Platform. All rights reserved.
         </footer>
       </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </AuthProvider>
   );
 }

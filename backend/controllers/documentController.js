@@ -616,3 +616,163 @@ exports.restoreVersion = async (req, res) => {
     res.status(500).json({ msg: 'Failed to restore version' });
   }
 };
+
+/**
+ * @desc    Generate and download PDF version of a document
+ * @route   GET /api/documents/:id/pdf
+ * @access  Private
+ */
+exports.downloadPDF = async (req, res) => {
+  let browser = null;
+  try {
+    console.log('Starting PDF download process for document:', req.params.id);
+    
+    const document = await Document.findById(req.params.id)
+      .populate('author', 'name email');
+
+    if (!document) {
+      console.log('Document not found:', req.params.id);
+      return res.status(404).json({ msg: 'Document not found' });
+    }
+
+    // Check user permissions
+    const isAuthor = document.author._id.toString() === req.userId;
+    const hasAccess = document.visibility === 'public' || 
+                     isAuthor || 
+                     document.sharedWith.some(share => share.user.toString() === req.userId);
+
+    if (!hasAccess) {
+      console.log('Access denied for user:', req.userId);
+      return res.status(403).json({ msg: 'Access denied' });
+    }
+
+    console.log('Initializing puppeteer...');
+    const puppeteer = require('puppeteer');
+
+    // Create HTML template for PDF
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 40px; 
+              line-height: 1.6;
+            }
+            .header { 
+              margin-bottom: 30px;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 20px;
+            }
+            .title { 
+              font-size: 24px; 
+              font-weight: bold; 
+              margin-bottom: 10px;
+              color: #2563eb;
+            }
+            .metadata { 
+              color: #666; 
+              font-size: 14px; 
+              margin-bottom: 20px;
+            }
+            .content { 
+              font-size: 14px;
+              color: #333;
+            }
+            .mention {
+              background-color: #e5edff;
+              padding: 2px 4px;
+              border-radius: 4px;
+              color: #2563eb;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">${document.title}</div>
+            <div class="metadata">
+              Author: ${document.author.name || document.author.email}<br>
+              Created: ${new Date(document.createdAt).toLocaleDateString()}<br>
+              Last Updated: ${new Date(document.updatedAt).toLocaleDateString()}
+            </div>
+          </div>
+          <div class="content">
+            ${document.content}
+          </div>
+        </body>
+      </html>
+    `;
+
+    console.log('Launching puppeteer browser...');
+    // Launch puppeteer with more detailed error logging
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    }).catch(err => {
+      console.error('Puppeteer launch error:', err);
+      throw err;
+    });
+    
+    console.log('Creating new page...');
+    const page = await browser.newPage();
+    
+    console.log('Setting page content...');
+    await page.setContent(htmlContent, { 
+      waitUntil: 'networkidle0',
+      timeout: 30000 
+    }).catch(err => {
+      console.error('Page content error:', err);
+      throw err;
+    });
+    
+    console.log('Generating PDF...');
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      margin: {
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm'
+      },
+      printBackground: true,
+      timeout: 30000
+    }).catch(err => {
+      console.error('PDF generation error:', err);
+      throw err;
+    });
+
+    console.log('Setting response headers...');
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf"`);
+    
+    console.log('Sending PDF response...');
+    res.send(pdfBuffer);
+
+  } catch (err) {
+    console.error('Detailed error in downloadPDF:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.userId,
+      documentId: req.params.id
+    });
+    res.status(500).json({ 
+      msg: 'Server error while generating PDF',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  } finally {
+    if (browser) {
+      console.log('Closing browser...');
+      await browser.close().catch(err => {
+        console.error('Error closing browser:', err);
+      });
+    }
+  }
+};

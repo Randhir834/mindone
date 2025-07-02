@@ -8,13 +8,15 @@
 import { useRouter } from 'next/router';
 import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
+import { documentService } from '../services/documentService';
+import { toast } from 'react-toastify';
 
-export default function DocumentCard({ document, currentUserId, onDelete }) {
+export default function DocumentCard({ document: docData, currentUserId, onDelete }) {
   const router = useRouter();
 
   // Navigate to document detail page when card is clicked
   const handleClick = () => {
-    router.push(`/documents/${document._id}`);
+    router.push(`/documents/${docData._id}`);
   };
 
   // Handle document deletion with confirmation
@@ -22,14 +24,50 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
     e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
     try {
-      await import('../services/documentService').then(({ documentService }) => documentService.deleteDocument(document._id));
-      if (onDelete) onDelete(document._id);
-      if (typeof window !== 'undefined' && window.toast) {
-        window.toast.success('Document deleted successfully!');
-      }
+      await documentService.deleteDocument(docData._id);
+      if (onDelete) onDelete(docData._id);
+      toast.success('Document deleted successfully!');
     } catch (error) {
-      if (typeof window !== 'undefined' && window.toast) {
-        window.toast.error(error.msg || 'Failed to delete document.');
+      toast.error(error.msg || 'Failed to delete document.');
+    }
+  };
+
+  // Handle PDF download
+  const handleDownload = async (e) => {
+    e.stopPropagation(); // Prevent card click
+    try {
+      toast.info('Preparing PDF for download...', {
+        autoClose: false,
+        toastId: `pdf-${docData._id}`
+      });
+      
+      const blob = await documentService.downloadPDF(docData._id);
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      // Create a temporary link element using window.document
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${docData.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      
+      // Append to body, click, and remove
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+      
+      toast.dismiss(`pdf-${docData._id}`);
+      toast.success('PDF download started!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.dismiss(`pdf-${docData._id}`);
+      if (error.message.includes('Server did not return a PDF file')) {
+        toast.error('The server response was not in PDF format. Please try again later.');
+      } else if (error.message.includes('Failed to fetch')) {
+        toast.error('Network error. Please check your internet connection.');
+      } else {
+        toast.error(error.message || 'Failed to download PDF');
       }
     }
   };
@@ -86,10 +124,10 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
   // Process and sanitize HTML content for preview
   // Handles mentions and trims content to 200 characters
   let htmlPreview = '';
-  if (typeof window !== 'undefined' && document.content) {
+  if (typeof window !== 'undefined' && docData.content) {
     // Use DOMParser to safely parse HTML in the browser
     const parser = new window.DOMParser();
-    const doc = parser.parseFromString(document.content, 'text/html');
+    const doc = parser.parseFromString(docData.content, 'text/html');
     let charCount = 0;
     let result = '';
 
@@ -135,16 +173,28 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
         <div className="p-6 flex flex-col h-full relative">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center space-x-3">
-              {getVisibilityIcon(document.visibility)}
-              {getVisibilityText(document.visibility)}
+              {getVisibilityIcon(docData.visibility)}
+              {getVisibilityText(docData.visibility)}
             </div>
-            <div className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-              {document.updatedAt && formatDistanceToNow(new Date(document.updatedAt), { addSuffix: true })}
+            <div className="flex items-center space-x-2">
+              {/* Download PDF Button */}
+              <button
+                onClick={handleDownload}
+                className="text-gray-600 hover:text-indigo-600 transition-colors duration-200"
+                title="Download PDF"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
+              <div className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                {docData.updatedAt && formatDistanceToNow(new Date(docData.updatedAt), { addSuffix: true })}
+              </div>
             </div>
           </div>
 
           <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 group-hover:from-indigo-600 group-hover:to-purple-600 transition-all duration-300 mb-2 line-clamp-2 h-[3.5rem]">
-            {document.title}
+            {docData.title}
           </h3>
 
           <p className="text-gray-600 text-sm mb-4 line-clamp-4 flex-grow group-hover:text-gray-800 transition-colors duration-300 h-[5rem]">
@@ -158,16 +208,16 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
           <div className="flex items-center justify-between text-sm mt-auto pt-4 border-t border-gray-100">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                {(document.author?.name || document.author?.email || 'U')[0].toUpperCase()}
+                {(docData.author?.name || docData.author?.email || 'U')[0].toUpperCase()}
               </div>
               <span className="text-gray-600">
                 <span className="font-medium bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                  {document.author?.name || document.author?.email || 'Unknown'}
+                  {docData.author?.name || docData.author?.email || 'Unknown'}
                 </span>
               </span>
             </div>
             <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-              {document.createdAt && new Date(document.createdAt).toLocaleDateString()}
+              {docData.createdAt && new Date(docData.createdAt).toLocaleDateString()}
             </span>
           </div>
         </div>

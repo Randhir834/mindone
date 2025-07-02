@@ -19,7 +19,9 @@ const {
   getVersionHistory,
   getVersion,
   compareVersions,
-  restoreVersion
+  restoreVersion,
+  getSharedUsers,
+  downloadPDF
 } = require('../controllers/documentController');
 
 // Import authentication middleware
@@ -82,6 +84,12 @@ router.get('/:id/versions/:version', getVersion);
 router.get('/:id/compare/:version1/:version2', compareVersions);
 /** POST /api/documents/:id/restore/:version - Restore to previous version */
 router.post('/:id/restore/:version', restoreVersion);
+
+/**
+ * Document Download Routes
+ */
+/** GET /api/documents/:id/pdf - Download document as PDF */
+router.get('/:id/pdf', protect, downloadPDF);
 
 // Export the router
 module.exports = router;
