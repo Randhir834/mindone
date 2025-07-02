@@ -1,8 +1,19 @@
+/**
+ * Document Service
+ * Handles all document-related operations including:
+ * - Document CRUD operations
+ * - Document sharing and permissions
+ * - Document search functionality
+ * - Public document access
+ */
+
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+// API configuration with fallback URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://mindone-backend.onrender.com/api";
 
+// Create axios instance with base configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,6 +22,7 @@ const api = axios.create({
   withCredentials: true
 });
 
+// Request interceptor for adding authentication token
 api.interceptors.request.use(
   (config) => {
     const token = Cookies.get('token');
@@ -24,6 +36,7 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor for handling authentication errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -38,12 +51,18 @@ api.interceptors.response.use(
 );
 
 export const documentService = {
-  // Create a new document
+  /**
+   * Create a new document
+   * @param {string} title - Document title
+   * @param {string} content - Document content
+   * @param {string} visibility - Document visibility ('private' or 'public')
+   * @returns {Promise<Object>} Created document data
+   */
   async createDocument(title, content, visibility = 'private') {
     try {
       const response = await api.post('/documents', { title, content, visibility });
       
-      // Check if the response contains a valid document
+      // Validate response contains document ID
       if (response.data && response.data._id) {
         return response.data;
       } else {
@@ -52,9 +71,9 @@ export const documentService = {
     } catch (error) {
       console.error('Document creation error:', error);
       
-      // If we have a successful response but with an error message, it might be a false positive
+      // Handle various error scenarios
       if (error.response && error.response.status === 201) {
-        return error.response.data;
+        return error.response.data; // Handle successful creation with warning
       }
       
       if (error.response?.data?.msg) {
@@ -73,7 +92,10 @@ export const documentService = {
     }
   },
 
-  // Get all documents accessible by user
+  /**
+   * Fetch all documents accessible by the current user
+   * @returns {Promise<Array>} List of documents
+   */
   async getDocuments() {
     try {
       const response = await api.get('/documents');
@@ -83,7 +105,11 @@ export const documentService = {
     }
   },
 
-  // Get a single document by ID
+  /**
+   * Fetch a single document by ID
+   * @param {string} id - Document ID
+   * @returns {Promise<Object>} Document data
+   */
   async getDocumentById(id) {
     try {
       const response = await api.get(`/documents/${id}`);
@@ -93,7 +119,12 @@ export const documentService = {
     }
   },
 
-  // Update a document
+  /**
+   * Update an existing document
+   * @param {string} id - Document ID
+   * @param {Object} updates - Document updates (title, content, visibility)
+   * @returns {Promise<Object>} Updated document data
+   */
   async updateDocument(id, updates) {
     try {
       const response = await api.put(`/documents/${id}`, updates);
@@ -103,7 +134,11 @@ export const documentService = {
     }
   },
 
-  // Delete a document
+  /**
+   * Delete a document
+   * @param {string} id - Document ID
+   * @returns {Promise<Object>} Deletion confirmation
+   */
   async deleteDocument(id) {
     try {
       const response = await api.delete(`/documents/${id}`);
@@ -113,7 +148,11 @@ export const documentService = {
     }
   },
 
-  // Search documents
+  /**
+   * Search documents by query
+   * @param {string} query - Search query
+   * @returns {Promise<Array>} List of matching documents
+   */
   async searchDocuments(query) {
     try {
       const response = await api.get(`/documents/search?q=${encodeURIComponent(query)}`);
@@ -123,7 +162,13 @@ export const documentService = {
     }
   },
 
-  // Share a document with another user
+  /**
+   * Share document with another user
+   * @param {string} id - Document ID
+   * @param {string} userId - User ID to share with
+   * @param {string} permission - Permission level ('view' or 'edit')
+   * @returns {Promise<Object>} Share confirmation
+   */
   async shareDocument(id, userId, permission = 'view') {
     try {
       const response = await api.post(`/documents/${id}/share`, { userId, permission });
@@ -133,7 +178,11 @@ export const documentService = {
     }
   },
 
-  // Get a public document (no authentication required)
+  /**
+   * Get a publicly shared document
+   * @param {string} id - Document ID
+   * @returns {Promise<Object>} Public document data
+   */
   async getPublicDocument(id) {
     try {
       const response = await axios.get(`${API_BASE_URL}/documents/public/${id}`);
@@ -143,7 +192,12 @@ export const documentService = {
     }
   },
 
-  // Remove a user from document sharing
+  /**
+   * Remove user access from shared document
+   * @param {string} documentId - Document ID
+   * @param {string} userId - User ID to remove
+   * @returns {Promise<Object>} Removal confirmation
+   */
   async removeSharedUser(documentId, userId) {
     try {
       const response = await api.delete(`/documents/${documentId}/share/${userId}`);

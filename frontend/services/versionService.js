@@ -1,9 +1,22 @@
+/**
+ * Version Service
+ * Handles document version control operations including:
+ * - Version history tracking
+ * - Version comparison
+ * - Version restoration
+ * - Version metadata formatting
+ */
+
 import { authHeader } from '../utils/auth';
 
+// API configuration with fallback URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL|| "https://mindone-backend.onrender.com/api";
 
 /**
- * Get version history for a document
+ * Fetch version history for a document
+ * @param {string} documentId - Document ID
+ * @param {number} limit - Maximum number of versions to fetch (default: 50)
+ * @returns {Promise<Array>} List of document versions
  */
 export const getVersionHistory = async (documentId, limit = 50) => {
   try {
@@ -28,7 +41,10 @@ export const getVersionHistory = async (documentId, limit = 50) => {
 };
 
 /**
- * Get a specific version of a document
+ * Fetch a specific version of a document
+ * @param {string} documentId - Document ID
+ * @param {number} versionNumber - Version number to fetch
+ * @returns {Promise<Object>} Document version data
  */
 export const getVersion = async (documentId, versionNumber) => {
   try {
@@ -53,6 +69,10 @@ export const getVersion = async (documentId, versionNumber) => {
 
 /**
  * Compare two versions of a document
+ * @param {string} documentId - Document ID
+ * @param {number} version1 - First version number
+ * @param {number} version2 - Second version number
+ * @returns {Promise<Object>} Version comparison data
  */
 export const compareVersions = async (documentId, version1, version2) => {
   try {
@@ -77,6 +97,9 @@ export const compareVersions = async (documentId, version1, version2) => {
 
 /**
  * Restore a document to a previous version
+ * @param {string} documentId - Document ID
+ * @param {number} versionNumber - Version number to restore to
+ * @returns {Promise<Object>} Restored document data
  */
 export const restoreVersion = async (documentId, versionNumber) => {
   try {
@@ -100,7 +123,9 @@ export const restoreVersion = async (documentId, versionNumber) => {
 };
 
 /**
- * Format date for display
+ * Format date for display in version history
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date string
  */
 export const formatDate = (dateString) => {
   const date = new Date(dateString);
@@ -108,7 +133,9 @@ export const formatDate = (dateString) => {
 };
 
 /**
- * Get change type display text
+ * Get display text for version change type
+ * @param {string} changeType - Type of change made in version
+ * @returns {string} Human-readable change type description
  */
 export const getChangeTypeText = (changeType) => {
   const changeTypes = {
@@ -122,7 +149,9 @@ export const getChangeTypeText = (changeType) => {
 };
 
 /**
- * Get change type color for UI
+ * Get CSS color class for version change type
+ * @param {string} changeType - Type of change made in version
+ * @returns {string} Tailwind CSS color classes
  */
 export const getChangeTypeColor = (changeType) => {
   const colors = {

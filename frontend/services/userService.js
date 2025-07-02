@@ -1,6 +1,15 @@
+/**
+ * User Service
+ * Handles user-related operations including:
+ * - User search functionality
+ * - User mention suggestions
+ * - User profile operations
+ */
+
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+// API configuration with fallback URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL|| "https://mindone-backend.onrender.com/api";
 
 // Create axios instance with base configuration
@@ -12,7 +21,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor to add auth token
+// Request interceptor for adding authentication token
 api.interceptors.request.use(
   (config) => {
     const token = Cookies.get('token');
@@ -28,9 +37,11 @@ api.interceptors.request.use(
 
 export const userService = {
   /**
-   * Search for users to mention.
-   * @param {string} query - The search query (name or email).
-   * @returns {Promise<Array>} A list of matching users with { _id, name, email }.
+   * Search for users by name or email for mention suggestions
+   * Returns empty array on failure to prevent UI breaks
+   * 
+   * @param {string} query - Search query (name or email)
+   * @returns {Promise<Array>} List of matching users with { _id, name, email }
    */
   async searchUsers(query) {
     try {

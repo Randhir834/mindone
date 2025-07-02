@@ -1,14 +1,27 @@
+/**
+ * Authentication Service
+ * Handles all authentication-related operations including:
+ * - User registration and login
+ * - Token management
+ * - Password reset flow
+ * - User profile management
+ * - OTP verification
+ */
+
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+// API configuration with fallback URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://mindone-backend.onrender.com/api";
 
+// Create axios instance with base configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true
+  withCredentials: true // Enable sending cookies with requests
 });
 
+// Request interceptor for adding authentication token
 api.interceptors.request.use(
   (config) => {
     const token = Cookies.get('token');
@@ -20,6 +33,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor for handling authentication errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,6 +46,13 @@ api.interceptors.response.use(
 );
 
 export const authService = {
+  /**
+   * Register a new user
+   * @param {string} name - User's full name
+   * @param {string} email - User's email address
+   * @param {string} password - User's password
+   * @returns {Promise<Object>} User data
+   */
   async register(name, email, password) {
     try {
       const response = await api.post('/auth/register', { name, email, password });
@@ -41,11 +62,18 @@ export const authService = {
     }
   },
 
+  /**
+   * Authenticate user and store token
+   * @param {string} email - User's email
+   * @param {string} password - User's password
+   * @returns {Promise<Object>} Authentication data including token
+   */
   async login(email, password) {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token } = response.data;
       if (token) {
+        // Store token with 2-hour expiry
         Cookies.set('token', token, { expires: 2/24, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
       }
       return response.data;
@@ -54,22 +82,37 @@ export const authService = {
     }
   },
 
+  /**
+   * Clear authentication token and redirect to login
+   */
   logout() {
     Cookies.remove('token');
     if (typeof window !== 'undefined') window.location.href = '/login';
   },
 
+  /**
+   * Get current authentication token
+   * @returns {string|null} Authentication token
+   */
   getToken() {
     return Cookies.get('token');
   },
 
+  /**
+   * Check if user is authenticated
+   * @returns {boolean} Authentication status
+   */
   isAuthenticated() {
     return !!Cookies.get('token');
   },
 
+  /**
+   * Initiate password reset process
+   * @param {string} email - User's email address
+   * @returns {Promise<Object>} Reset request confirmation
+   */
   async forgotPassword(email) {
     try {
-      // CORRECTED: Changed endpoint from '/auth/forgot' to '/auth/forgot-password'
       const response = await api.post('/auth/forgot-password', { email });
       return response.data;
     } catch (error) {
@@ -77,9 +120,14 @@ export const authService = {
     }
   },
 
+  /**
+   * Complete password reset process
+   * @param {string} token - Reset token from email
+   * @param {string} password - New password
+   * @returns {Promise<Object>} Reset confirmation
+   */
   async resetPassword(token, password) {
     try {
-      // CORRECTED: Changed endpoint from '/auth/reset/:token' to '/auth/reset-password/:token'
       const response = await api.put(`/auth/reset-password/${token}`, { password });
       return response.data;
     } catch (error) {
@@ -87,10 +135,12 @@ export const authService = {
     }
   },
 
-  // NEW: Fetch notifications
+  /**
+   * Fetch user notifications
+   * @returns {Promise<Array>} List of notifications
+   */
   async getNotifications() {
     try {
-      // Assumes backend endpoint GET /api/auth/notifications
       const response = await api.get('/auth/notifications');
       return response.data;
     } catch (error) {
@@ -98,10 +148,12 @@ export const authService = {
     }
   },
 
-  // NEW: Mark all notifications as read
+  /**
+   * Mark all notifications as read
+   * @returns {Promise<Object>} Update confirmation
+   */
   async markNotificationsAsRead() {
     try {
-      // Assumes backend endpoint POST /api/auth/notifications/read
       const response = await api.post('/auth/notifications/read');
       return response.data;
     } catch (error) {
@@ -109,7 +161,10 @@ export const authService = {
     }
   },
 
-  // NEW: Get current user profile
+  /**
+   * Get current user's profile
+   * @returns {Promise<Object>} User profile data
+   */
   async getProfile() {
     try {
       const response = await api.get('/auth/profile');
@@ -119,7 +174,12 @@ export const authService = {
     }
   },
 
-  // NEW: Change password for logged-in user
+  /**
+   * Change user's password
+   * @param {string} currentPassword - Current password
+   * @param {string} newPassword - New password
+   * @returns {Promise<Object>} Update confirmation
+   */
   async changePassword(currentPassword, newPassword) {
     try {
       const response = await api.put('/auth/change-password', { currentPassword, newPassword });
@@ -129,7 +189,12 @@ export const authService = {
     }
   },
 
-  // NEW: Verify OTP after registration
+  /**
+   * Verify OTP code after registration
+   * @param {string} email - User's email
+   * @param {string} otp - OTP code
+   * @returns {Promise<Object>} Verification confirmation
+   */
   async verifyOtp(email, otp) {
     try {
       const response = await api.post('/auth/verify-otp', { email, otp });

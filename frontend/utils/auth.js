@@ -1,11 +1,24 @@
+/**
+ * Authentication Utilities
+ * Provides authentication context, hooks, and helper functions for:
+ * - User authentication state management
+ * - Protected route handling
+ * - Token management and validation
+ * - Authentication redirects
+ */
+
 import { useEffect, useState, createContext, useContext } from 'react';
 import { useRouter } from 'next/router';
 import authService from '../services/authService';
 
-// Create auth context
+// Create authentication context for global state management
 const AuthContext = createContext(null);
 
-// Auth Provider component
+/**
+ * Authentication Provider Component
+ * Wraps the application to provide authentication state
+ * Handles initial authentication check and user data loading
+ */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +46,11 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Hook to use auth context
+/**
+ * Hook to access authentication context
+ * @throws {Error} If used outside of AuthProvider
+ * @returns {Object} Authentication context value
+ */
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -42,14 +59,19 @@ export const useAuthContext = () => {
   return context;
 };
 
-// Hook to check authentication status
+/**
+ * Hook to manage authentication state
+ * Provides authentication status, user data, and auth functions
+ * Handles automatic redirect to login for unauthenticated users
+ * @returns {Object} Authentication state and functions
+ */
 export const useAuth = () => {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   
-  // Check if we're on the client side
+  // Check if we're on the client side and initialize auth state
   useEffect(() => {
     setIsClient(true);
     const authenticated = authService.isAuthenticated();
@@ -77,7 +99,11 @@ export const useAuth = () => {
   };
 };
 
-// Hook to redirect authenticated users away from auth pages
+/**
+ * Hook to redirect authenticated users
+ * Used on login/register pages to prevent authenticated access
+ * @param {string} redirectTo - Path to redirect to (default: '/dashboard')
+ */
 export const useRedirectIfAuthenticated = (redirectTo = '/dashboard') => {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
@@ -87,6 +113,7 @@ export const useRedirectIfAuthenticated = (redirectTo = '/dashboard') => {
     setIsClient(true);
   }, []);
 
+  // Redirect if authenticated
   useEffect(() => {
     if (isClient && authService.isAuthenticated()) {
       router.push(redirectTo);
@@ -94,7 +121,13 @@ export const useRedirectIfAuthenticated = (redirectTo = '/dashboard') => {
   }, [isClient, router, redirectTo]);
 };
 
-// Higher-order component for protected routes
+/**
+ * Higher-order component for protected routes
+ * Wraps components that require authentication
+ * Automatically handles redirect to login
+ * @param {Component} WrappedComponent - Component to protect
+ * @returns {Component} Protected component
+ */
 export const withAuth = (WrappedComponent) => {
   return function AuthenticatedComponent(props) {
     const { isAuthenticated } = useAuth();
@@ -107,13 +140,17 @@ export const withAuth = (WrappedComponent) => {
   };
 };
 
-// Utility function to get user from token (if needed)
+/**
+ * Extract user data from JWT token
+ * Note: This is a simple decode, not verification
+ * @param {string} token - JWT token
+ * @returns {Object|null} Decoded user data or null if invalid
+ */
 export const getUserFromToken = (token) => {
   if (!token) return null;
   
   try {
-    // Note: This is a simple decode, not verification
-    // For production, you should verify the token on the server
+    // Simple token decode - server should verify
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload;
   } catch (error) {
@@ -122,7 +159,11 @@ export const getUserFromToken = (token) => {
   }
 };
 
-// Utility function to check if token is expired
+/**
+ * Check if JWT token is expired
+ * @param {string} token - JWT token
+ * @returns {boolean} True if token is expired or invalid
+ */
 export const isTokenExpired = (token) => {
   if (!token) return true;
   
@@ -135,9 +176,11 @@ export const isTokenExpired = (token) => {
   }
 };
 
-// Add this if missing
+/**
+ * Generate authorization header with token
+ * @returns {Object} Headers object with Authorization if token exists
+ */
 export function authHeader() {
-  // Example: get token from localStorage and return header
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
