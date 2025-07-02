@@ -1,3 +1,11 @@
+/**
+ * Root Application Component
+ * Wraps all pages with common functionality:
+ * - Authentication context
+ * - Global keyboard shortcuts
+ * - Toast notifications
+ * - Common layout elements
+ */
 import { useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '../utils/auth';
@@ -30,12 +38,18 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <AuthProvider>
+      {/* Global head settings */}
       <Head>
         <title>Knowledge Base Platform</title>
       </Head>
       <div>
+        {/* Render current page component */}
         <Component {...pageProps} onOpenSearch={() => router.push('/search')} />
+        
+        {/* Global toast notifications */}
         <Toaster position="bottom-right" />
+        
+        {/* Global footer */}
         <footer style={{ textAlign: 'center', padding: '1rem 0', color: '#888', fontSize: '0.95rem' }}>
           &copy; {new Date().getFullYear()} Knowledge Base Platform. All rights reserved.
         </footer>

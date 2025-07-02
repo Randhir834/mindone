@@ -1,21 +1,31 @@
+/**
+ * Public Document View Page
+ * Displays a read-only view of public documents for unauthenticated users.
+ * Provides basic document information and content without editing capabilities.
+ * Includes a call-to-action for signing in to create documents.
+ */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { documentService } from '../../../services/documentService';
 import Head from 'next/head';
 
 export default function PublicDocument() {
-  const router = useRouter();
-  const { id } = router.query;
+  // State management
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const router = useRouter();
+  const { id } = router.query;
+
+  // Load public document data when ID is available
   useEffect(() => {
     if (id) {
       loadPublicDocument();
     }
   }, [id]);
 
+  // Fetch public document from the server
   const loadPublicDocument = async () => {
     try {
       setLoading(true);
@@ -28,6 +38,7 @@ export default function PublicDocument() {
     }
   };
 
+  // Loading state UI
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -39,6 +50,7 @@ export default function PublicDocument() {
     );
   }
 
+  // Error state UI (e.g., private document, not found)
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -57,6 +69,7 @@ export default function PublicDocument() {
     );
   }
 
+  // Not found state UI
   if (!document) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -71,6 +84,7 @@ export default function PublicDocument() {
 
   return (
     <>
+      {/* SEO metadata */}
       <Head>
         <title>{document.title} - Knowledge Base Platform</title>
         <meta name="description" content={`Public document: ${document.title}`} />
@@ -78,7 +92,7 @@ export default function PublicDocument() {
       
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto py-8 px-4">
-          {/* Header */}
+          {/* Document header with metadata */}
           <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -102,7 +116,7 @@ export default function PublicDocument() {
             </div>
           </div>
 
-          {/* Document Content */}
+          {/* Document content */}
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="p-6">
               <div 
@@ -112,7 +126,7 @@ export default function PublicDocument() {
             </div>
           </div>
 
-          {/* Footer */}
+          {/* Call-to-action footer */}
           <div className="mt-6 text-center text-gray-500 text-sm">
             <p>This is a public document. Anyone with this link can view it.</p>
             <button

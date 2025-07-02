@@ -1,3 +1,11 @@
+/**
+ * Registration Page Component
+ * Handles new user registration flow:
+ * - User information form (name, email, password)
+ * - OTP verification after successful registration
+ * - Form validation and error handling
+ * - Navigation to login after verification
+ */
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -7,6 +15,7 @@ import authService from '../services/authService';
 import { useRedirectIfAuthenticated } from '../utils/auth';
 
 export default function Register() {
+  // State management
   const [isLoading, setIsLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
@@ -14,12 +23,15 @@ export default function Register() {
   const [otpError, setOtpError] = useState('');
   const [otpSuccess, setOtpSuccess] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
+  
+  // Router and form initialization
   const router = useRouter();
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   
   // Redirect if already authenticated
   useRedirectIfAuthenticated();
 
+  // Handle registration form submission
   const onSubmit = async (data) => {
     setIsLoading(true);
     setOtpError('');
@@ -36,6 +48,7 @@ export default function Register() {
     }
   };
 
+  // Handle OTP verification
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setOtpLoading(true);
@@ -56,8 +69,9 @@ export default function Register() {
     <div className="auth-container">
       <div className="auth-form">
         <div className="auth-card">
+          {/* Header Section */}
           <div className="text-center mb-8">
-            {/* Animated Logo/Icon */}
+            {/* User Icon */}
             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-r from-green-500 to-blue-600 mb-6 floating-icon pulse-glow">
               <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -79,6 +93,7 @@ export default function Register() {
           </div>
 
           {showOtp ? (
+            // OTP Verification Form
             <form className="space-y-6" onSubmit={handleOtpSubmit}>
               <div className="form-field">
                 <label htmlFor="otp" className="form-label">Enter OTP sent to your email</label>
@@ -108,7 +123,9 @@ export default function Register() {
               </div>
             </form>
           ) : (
+            // Registration Form
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+              {/* Full Name Input */}
               <div className="form-field">
                 <label htmlFor="name" className="form-label">
                   <div className="flex items-center">
@@ -137,6 +154,7 @@ export default function Register() {
                 )}
               </div>
 
+              {/* Email Input */}
               <div className="form-field">
                 <label htmlFor="email" className="form-label">
                   <div className="flex items-center">
@@ -165,6 +183,7 @@ export default function Register() {
                 )}
               </div>
 
+              {/* Password Input */}
               <div className="form-field">
                 <label htmlFor="password" className="form-label">
                   <div className="flex items-center">
@@ -193,6 +212,7 @@ export default function Register() {
                 )}
               </div>
 
+              {/* Confirm Password Input */}
               <div className="form-field">
                 <label htmlFor="confirmPassword" className="form-label">
                   <div className="flex items-center">
@@ -222,6 +242,7 @@ export default function Register() {
                 )}
               </div>
 
+              {/* Submit Button */}
               <div className="form-field">
                 <button
                   type="submit"
@@ -249,6 +270,7 @@ export default function Register() {
             </form>
           )}
 
+          {/* Login Link Section */}
           <div className="mt-8 text-center">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

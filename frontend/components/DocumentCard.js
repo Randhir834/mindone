@@ -1,3 +1,10 @@
+/**
+ * DocumentCard component displays a single document in a card format.
+ * It shows document metadata, visibility status, and content preview.
+ * @param {Object} document - The document object containing metadata and content
+ * @param {string} currentUserId - ID of the currently logged in user
+ * @param {Function} onDelete - Callback function when document is deleted
+ */
 import { useRouter } from 'next/router';
 import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
@@ -5,11 +12,12 @@ import DOMPurify from 'dompurify';
 export default function DocumentCard({ document, currentUserId, onDelete }) {
   const router = useRouter();
 
+  // Navigate to document detail page when card is clicked
   const handleClick = () => {
-    // Navigate to the specific document page
     router.push(`/documents/${document._id}`);
   };
 
+  // Handle document deletion with confirmation
   const handleDelete = async (e) => {
     e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
@@ -60,6 +68,7 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
     }
   };
 
+  // Get appropriate visibility text and styling based on document visibility level
   const getVisibilityText = (visibility) => {
     const colors = {
       private: 'bg-red-50 text-red-600 border-red-100 group-hover:bg-red-100',
@@ -74,7 +83,8 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
     );
   };
 
-  // Sanitize and trim HTML for a styled preview (mentions, etc.)
+  // Process and sanitize HTML content for preview
+  // Handles mentions and trims content to 200 characters
   let htmlPreview = '';
   if (typeof window !== 'undefined' && document.content) {
     // Use DOMParser to safely parse HTML in the browser
@@ -82,6 +92,8 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
     const doc = parser.parseFromString(document.content, 'text/html');
     let charCount = 0;
     let result = '';
+
+    // Recursive function to traverse DOM and extract text while preserving mentions
     function traverse(node) {
       if (charCount >= 200) return;
       if (node.nodeType === Node.TEXT_NODE) {
@@ -90,7 +102,7 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
         charCount += text.length;
         result += text;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Keep mention styling, but not other tags
+        // Preserve mention styling while stripping other HTML
         if (node.classList.contains && node.classList.contains('mention')) {
           result += `<span class=\"mention\">${node.textContent.slice(0, 200 - charCount)}</span>`;
           charCount += node.textContent.length;
@@ -103,6 +115,7 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
       }
     }
     traverse(doc.body);
+    // Sanitize final HTML to prevent XSS
     htmlPreview = DOMPurify.sanitize(result) + (charCount >= 200 ? '...' : '');
   }
 
@@ -111,10 +124,10 @@ export default function DocumentCard({ document, currentUserId, onDelete }) {
       onClick={handleClick}
       className="group relative"
     >
-      {/* Hover effect background */}
+      {/* Gradient background effect on hover */}
       <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
       
-      {/* Card content */}
+      {/* Main card content container */}
       <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg hover:shadow-2xl border border-gray-100/50 transition-all duration-500 cursor-pointer w-full h-[320px] overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-bl-[100px] opacity-20 transition-transform duration-500 group-hover:scale-150 group-hover:opacity-30"></div>

@@ -1,3 +1,12 @@
+/**
+ * Document Detail Page - Main editor/viewer for authenticated users
+ * Features:
+ * - Real-time document editing with autosave
+ * - Version history management
+ * - Document sharing and permissions
+ * - Public/private visibility controls
+ * - Collaborative features
+ */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
@@ -8,7 +17,10 @@ import Notifications from '../../components/Notifications';
 import SharingManager from '../../components/SharingManager';
 import VersionHistory from '../../components/VersionHistory';
 
-// Debounce hook
+/**
+ * Custom hook to debounce value changes
+ * Used for autosaving to prevent too frequent API calls
+ */
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -21,6 +33,7 @@ function useDebounce(value, delay) {
 }
 
 export default function DocumentDetail() {
+  // Document state management
   const [document, setDocument] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,11 +43,16 @@ export default function DocumentDetail() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [visibility, setVisibility] = useState('private');
   const [canEdit, setCanEdit] = useState(false);
+  
+  // UI state management
   const [showSharing, setShowSharing] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  
+  // Autosave retry management
   const saveAttempts = useRef(0);
   const maxSaveAttempts = 3;
 
+  // Debounce content and title changes for autosave
   const debouncedContent = useDebounce(content, 1500);
   const debouncedTitle = useDebounce(title, 1500);
 
@@ -42,6 +60,7 @@ export default function DocumentDetail() {
   const { id } = router.query;
   const { isAuthenticated, user } = useAuth();
 
+  // Warn user about unsaved changes when leaving page
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (hasUnsavedChanges) {
@@ -53,6 +72,7 @@ export default function DocumentDetail() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  // Load document data and set initial state
   const loadDocument = useCallback(async () => {
     if (!id || !isAuthenticated) return;
     
@@ -68,7 +88,7 @@ export default function DocumentDetail() {
       setLastSavedAt(new Date());
       setHasUnsavedChanges(false);
       
-      // Determine if user can edit the document
+      // Check user's permissions for this document
       const isAuthor = doc.author._id === user?.id;
       const hasEditPermission = doc.sharedWith?.some(
         share => share.user._id === user?.id && share.permission === 'edit'
@@ -83,10 +103,12 @@ export default function DocumentDetail() {
     }
   }, [id, router, isAuthenticated, user]);
 
+  // Load document on mount and when ID changes
   useEffect(() => {
     loadDocument();
   }, [loadDocument]);
 
+  // Handle automatic saving of changes
   const handleAutoSave = useCallback(async () => {
     if (!document || isSaving || !hasUnsavedChanges || !canEdit) return;
     
@@ -101,6 +123,7 @@ export default function DocumentDetail() {
       saveAttempts.current = 0;
       toast.success('Changes saved', { id: 'autosave-toast', duration: 2000, icon: '✓' });
     } catch (error) {
+      // Implement exponential backoff for retries
       saveAttempts.current += 1;
       
       if (saveAttempts.current >= maxSaveAttempts) {
@@ -115,6 +138,7 @@ export default function DocumentDetail() {
     }
   }, [id, title, content, visibility, document, isSaving, hasUnsavedChanges, canEdit]);
 
+  // Trigger autosave when debounced content or title changes
   useEffect(() => {
     if (isLoading || !document || !canEdit) return;
     if (debouncedContent !== document.content || debouncedTitle !== document.title) {
@@ -122,29 +146,34 @@ export default function DocumentDetail() {
     }
   }, [debouncedContent, debouncedTitle, document, isLoading, handleAutoSave, canEdit]);
 
+  // Handle manual save button click
   const handleManualSave = async () => {
     if (!hasUnsavedChanges || !canEdit) return;
     await handleAutoSave();
   };
 
+  // Handle editor content updates
   const handleEditorUpdate = (newContent) => {
     if (!canEdit) return;
     setContent(newContent);
     if(newContent !== document.content) setHasUnsavedChanges(true);
   };
   
+  // Handle document title changes
   const handleTitleChange = (e) => {
     if (!canEdit) return;
     setTitle(e.target.value);
     setHasUnsavedChanges(true);
   };
   
+  // Handle visibility setting changes
   const handleVisibilityChange = (e) => {
     if (!canEdit) return;
     setVisibility(e.target.value);
     setHasUnsavedChanges(true);
   };
 
+  // Copy public document link to clipboard
   const copyPublicLink = async () => {
     if (visibility !== 'public') {
       toast.error('Document must be public to copy link');
@@ -156,7 +185,7 @@ export default function DocumentDetail() {
       await navigator.clipboard.writeText(publicUrl);
       toast.success('Public link copied to clipboard!');
     } catch (error) {
-      // Fallback for older browsers
+      // Fallback for browsers without clipboard API
       const textArea = document.createElement('textarea');
       textArea.value = publicUrl;
       document.body.appendChild(textArea);
@@ -169,12 +198,13 @@ export default function DocumentDetail() {
 
   const isAuthor = document?.author._id === user?.id;
 
+  // Handle version restoration callback
   const handleVersionRestored = () => {
-    // Reload the document after version restoration
     loadDocument();
     toast.success('Document restored to previous version');
   };
 
+  // Handle document deletion
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
     try {
@@ -186,20 +216,24 @@ export default function DocumentDetail() {
     }
   };
 
+  // Loading state
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div></div>;
   }
   
+  // Not found or no permission state
   if (!document) {
-     return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p>Document not found or you don't have permission.</p></div>
+     return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p>Document not found or you don't have permission.</p></div>;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Navigation and document controls */}
         <div className="mb-8">
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              {/* Back button with unsaved changes check */}
               <button
                 onClick={() => {
                   if (hasUnsavedChanges) {
@@ -212,6 +246,7 @@ export default function DocumentDetail() {
               >
                 <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
               </button>
+              {/* Document title and status */}
               <div>
                 <input
                   value={title}
@@ -228,13 +263,16 @@ export default function DocumentDetail() {
               </div>
             </div>
 
+            {/* Document action buttons */}
             <div className="flex items-center space-x-4">
+              {/* Version history toggle */}
               <button
                 onClick={() => setShowVersionHistory(!showVersionHistory)}
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-600 text-white hover:bg-gray-700"
               >
                 {showVersionHistory ? 'Hide History' : 'Version History'}
               </button>
+              {/* Sharing controls (author only) */}
               {isAuthor && (
                 <button
                   onClick={() => setShowSharing(!showSharing)}
@@ -243,6 +281,7 @@ export default function DocumentDetail() {
                   {showSharing ? 'Hide Sharing' : 'Manage Sharing'}
                 </button>
               )}
+              {/* Public link copy button */}
               {visibility === 'public' && (
                 <button
                   onClick={copyPublicLink}
@@ -251,6 +290,7 @@ export default function DocumentDetail() {
                   Copy Link
                 </button>
               )}
+              {/* Document controls for users with edit permission */}
               {canEdit && (
                 <>
                   <select 
@@ -269,6 +309,7 @@ export default function DocumentDetail() {
                   >Save</button>
                 </>
               )}
+              {/* Delete button (author only) */}
               {isAuthor && (
                 <button
                   onClick={handleDelete}
@@ -282,7 +323,7 @@ export default function DocumentDetail() {
           </nav>
         </div>
 
-        {/* Version History Panel */}
+        {/* Version history panel */}
         {showVersionHistory && (
           <div className="mb-6 bg-white/80 backdrop-blur-lg shadow-xl rounded-2xl border border-indigo-100">
             <VersionHistory 
@@ -292,7 +333,7 @@ export default function DocumentDetail() {
           </div>
         )}
 
-        {/* Sharing Manager Panel */}
+        {/* Sharing management panel */}
         {showSharing && isAuthor && (
           <div className="mb-6">
             <SharingManager 
@@ -302,6 +343,7 @@ export default function DocumentDetail() {
           </div>
         )}
 
+        {/* Document editor */}
         <div className="bg-white/80 backdrop-blur-lg shadow-xl rounded-2xl border border-indigo-100">
           <div className="p-8">
             <Editor 

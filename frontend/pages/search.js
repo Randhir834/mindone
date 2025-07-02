@@ -1,3 +1,12 @@
+/**
+ * Search Page Component
+ * Provides real-time document search functionality:
+ * - Debounced search input
+ * - Keyboard navigation
+ * - Result highlighting
+ * - Loading, error, and empty states
+ * - Responsive layout
+ */
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -5,13 +14,18 @@ import { documentService } from '../services/documentService';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function SearchResults() {
+  // Router and query management
   const router = useRouter();
   const { q: initialQuery } = router.query;
+  
+  // State management
   const [query, setQuery] = useState(initialQuery || '');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  
+  // Refs for DOM elements and debounce
   const searchInputRef = useRef(null);
   const searchDebounceRef = useRef(null);
 
@@ -56,7 +70,7 @@ export default function SearchResults() {
     };
   }, [query]);
 
-  // Keyboard navigation
+  // Keyboard navigation handler
   const handleKeyDown = (e) => {
     switch (e.key) {
       case 'ArrowDown':
@@ -97,7 +111,7 @@ export default function SearchResults() {
     }
   }, []);
 
-  // Highlight matching text
+  // Highlight matching text in search results
   const highlightMatch = (text, searchQuery) => {
     if (!searchQuery?.trim()) return text;
     const regex = new RegExp(`(${searchQuery})`, 'gi');
@@ -113,9 +127,10 @@ export default function SearchResults() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Enhanced Header with Search */}
+        {/* Search Header */}
         <div className="mb-8 bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-gray-100">
           <div className="flex flex-col space-y-4">
+            {/* Navigation and Keyboard Shortcut Info */}
             <div className="flex items-center justify-between">
               <button
                 onClick={() => router.back()}
@@ -134,7 +149,7 @@ export default function SearchResults() {
               </div>
             </div>
 
-            {/* Enhanced Search Input */}
+            {/* Search Input */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,12 +188,14 @@ export default function SearchResults() {
 
         {/* Results Section */}
         <div className="space-y-4">
+          {/* Loading State */}
           {isLoading ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 text-center shadow-lg border border-gray-100">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
               <p className="mt-4 text-gray-500">Searching documents...</p>
             </div>
           ) : error ? (
+            // Error State
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 text-center shadow-lg border border-gray-100">
               <svg className="mx-auto h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -192,6 +209,7 @@ export default function SearchResults() {
               </button>
             </div>
           ) : results.length === 0 ? (
+            // Empty State
             query ? (
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 text-center shadow-lg border border-gray-100">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -220,6 +238,7 @@ export default function SearchResults() {
               </div>
             )
           ) : (
+            // Search Results
             <div className="grid gap-4">
               {results.map((doc, index) => (
                 <Link
@@ -233,6 +252,7 @@ export default function SearchResults() {
                 >
                   <div className="flex items-start space-x-4">
                     <div className="flex-1 min-w-0">
+                      {/* Document Title and Visibility */}
                       <div className="flex items-center space-x-2">
                         <h2 className="text-xl font-semibold text-gray-900">
                           {highlightMatch(doc.title, query)}
@@ -244,6 +264,7 @@ export default function SearchResults() {
                         </span>
                       </div>
 
+                      {/* Document Content Preview */}
                       {doc.content && (
                         <div className="mt-2 prose prose-sm max-w-none text-gray-500">
                           {highlightMatch(doc.content.replace(/<[^>]*>?/gm, '').substring(0, 300), query)}
@@ -251,6 +272,7 @@ export default function SearchResults() {
                         </div>
                       )}
 
+                      {/* Document Metadata */}
                       <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
                         <span className="flex items-center">
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

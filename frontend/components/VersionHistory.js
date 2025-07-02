@@ -1,3 +1,13 @@
+/**
+ * VersionHistory component displays and manages document versions.
+ * Features include:
+ * - Viewing version history
+ * - Comparing versions
+ * - Restoring previous versions
+ * - Viewing version details and changes
+ * @param {string} documentId - ID of the document
+ * @param {Function} onVersionRestored - Callback when a version is restored
+ */
 import { useState, useEffect } from 'react';
 import { 
   getVersionHistory, 
@@ -10,6 +20,7 @@ import {
 } from '../services/versionService';
 
 const VersionHistory = ({ documentId, onVersionRestored }) => {
+  // State management for versions and UI
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,10 +30,12 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
   const [diffResult, setDiffResult] = useState(null);
   const [showDiff, setShowDiff] = useState(false);
 
+  // Load version history when component mounts or document changes
   useEffect(() => {
     loadVersionHistory();
   }, [documentId]);
 
+  // Fetch version history from the server
   const loadVersionHistory = async () => {
     try {
       setLoading(true);
@@ -36,6 +49,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     }
   };
 
+  // Load details of a specific version
   const handleVersionSelect = async (version) => {
     try {
       const versionData = await getVersion(documentId, version.version);
@@ -47,6 +61,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     }
   };
 
+  // Select a version for comparison
   const handleCompareSelect = (version, side) => {
     setCompareVersions(prev => ({
       ...prev,
@@ -54,6 +69,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     }));
   };
 
+  // Compare two selected versions
   const handleCompare = async () => {
     if (!compareVersions.v1 || !compareVersions.v2) {
       setError('Please select two versions to compare');
@@ -73,6 +89,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     }
   };
 
+  // Restore a previous version
   const handleRestore = async (versionNumber) => {
     if (!confirm('Are you sure you want to restore this version? This will create a new version with the restored content.')) {
       return;
@@ -84,13 +101,14 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
       if (onVersionRestored) {
         onVersionRestored();
       }
-      // Reload version history
+      // Reload version history to include the new version
       await loadVersionHistory();
     } catch (err) {
       setError('Failed to restore version');
     }
   };
 
+  // Render version comparison results
   const renderDiff = () => {
     if (!diffResult) return null;
 
@@ -98,7 +116,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
         <h4 className="font-semibold mb-3">Version Comparison</h4>
         
-        {/* Title Diff */}
+        {/* Title changes section */}
         {diffResult.title.changed && (
           <div className="mb-4">
             <h5 className="font-medium text-gray-700 mb-2">Title Changes:</h5>
@@ -115,7 +133,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
           </div>
         )}
 
-        {/* Content Stats */}
+        {/* Content statistics section */}
         {diffResult.content.changed && (
           <div className="mb-4">
             <h5 className="font-medium text-gray-700 mb-2">Content Changes:</h5>
@@ -136,7 +154,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
           </div>
         )}
 
-        {/* Visibility Diff */}
+        {/* Visibility changes section */}
         {diffResult.visibility.changed && (
           <div className="mb-4">
             <h5 className="font-medium text-gray-700 mb-2">Visibility Changes:</h5>
@@ -156,6 +174,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     );
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="p-4">
@@ -171,6 +190,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="p-4">
@@ -183,6 +203,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
 
   return (
     <div className="p-4">
+      {/* Header with compare mode toggle */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Version History</h3>
         <div className="flex gap-2">
@@ -203,6 +224,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
         </div>
       </div>
 
+      {/* Version comparison selector */}
       {compareMode && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
           <h4 className="font-medium text-blue-900 mb-2">Select versions to compare:</h4>
@@ -252,8 +274,10 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
         </div>
       )}
 
+      {/* Version comparison results */}
       {showDiff && renderDiff()}
 
+      {/* Version history list */}
       <div className="space-y-3">
         {versions.map(version => (
           <div
@@ -284,6 +308,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
                 </div>
               </div>
               <div className="flex gap-2">
+                {/* Version selection for comparison */}
                 {compareMode && (
                   <button
                     onClick={(e) => {
@@ -299,6 +324,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
                     Select
                   </button>
                 )}
+                {/* Version restore button */}
                 {version.version > 1 && (
                   <button
                     onClick={(e) => {
@@ -316,6 +342,7 @@ const VersionHistory = ({ documentId, onVersionRestored }) => {
         ))}
       </div>
 
+      {/* Selected version details panel */}
       {selectedVersion && !compareMode && (
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-semibold mb-3">Version {selectedVersion.version} Details</h4>

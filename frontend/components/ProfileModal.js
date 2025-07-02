@@ -1,8 +1,16 @@
+/**
+ * ProfileModal component displays user profile information and allows password changes.
+ * Shows user details like name, email, join date, and ID.
+ * Provides functionality to copy user ID and change password.
+ * @param {boolean} isOpen - Whether the modal is visible
+ * @param {Function} onClose - Callback to close the modal
+ */
 import { useEffect, useState } from 'react';
 import authService from '../services/authService';
 import Link from 'next/link';
 
 export default function ProfileModal({ isOpen, onClose }) {
+  // State management for profile data and UI states
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +21,7 @@ export default function ProfileModal({ isOpen, onClose }) {
   const [changePwdSuccess, setChangePwdSuccess] = useState('');
   const [changePwdError, setChangePwdError] = useState('');
 
+  // Fetch profile data when modal opens
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
@@ -41,6 +50,7 @@ export default function ProfileModal({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fadeInUp">
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 focus:outline-none"
@@ -50,7 +60,10 @@ export default function ProfileModal({ isOpen, onClose }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+
         <h2 className="text-2xl font-bold mb-6 text-center text-indigo-600">My Profile</h2>
+
+        {/* Loading state */}
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -59,13 +72,14 @@ export default function ProfileModal({ isOpen, onClose }) {
           <div className="text-red-500 text-center">{error}</div>
         ) : profile ? (
           <div className="space-y-4">
-            {/* Avatar */}
+            {/* User avatar */}
             <div className="flex justify-center mb-4">
               <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600">
                 {profile.name?.[0]?.toUpperCase() || "U"}
               </div>
             </div>
-            {/* User ID with copy */}
+
+            {/* User ID section with copy button */}
             <div>
               <span className="block text-gray-500 text-sm">User ID</span>
               <div className="flex items-center gap-2">
@@ -79,17 +93,16 @@ export default function ProfileModal({ isOpen, onClose }) {
                 </button>
               </div>
             </div>
-            {/* Name */}
+
+            {/* User details sections */}
             <div>
               <span className="block text-gray-500 text-sm">Name</span>
               <span className="block text-lg font-semibold text-gray-900">{profile.name}</span>
             </div>
-            {/* Email */}
             <div>
               <span className="block text-gray-500 text-sm">Email</span>
               <span className="block text-lg text-gray-900">{profile.email}</span>
             </div>
-            {/* Created At */}
             {profile.createdAt && (
               <div>
                 <span className="block text-gray-500 text-sm">Joined</span>
@@ -98,7 +111,8 @@ export default function ProfileModal({ isOpen, onClose }) {
                 </span>
               </div>
             )}
-            {/* Change Password */}
+
+            {/* Password change section */}
             <div className="pt-4">
               {!showChangePassword ? (
                 <button
@@ -131,6 +145,7 @@ export default function ProfileModal({ isOpen, onClose }) {
                   }}
                   className="space-y-3"
                 >
+                  {/* Current password input */}
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">Current Password</label>
                     <input
@@ -141,6 +156,7 @@ export default function ProfileModal({ isOpen, onClose }) {
                       required
                     />
                   </div>
+                  {/* New password input */}
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">New Password</label>
                     <input
@@ -152,8 +168,12 @@ export default function ProfileModal({ isOpen, onClose }) {
                       minLength={6}
                     />
                   </div>
+
+                  {/* Error and success messages */}
                   {changePwdError && <div className="text-red-500 text-sm">{changePwdError}</div>}
                   {changePwdSuccess && <div className="text-green-600 text-sm">{changePwdSuccess}</div>}
+
+                  {/* Form buttons */}
                   <div className="flex gap-2 pt-2">
                     <button
                       type="submit"

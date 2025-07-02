@@ -1,3 +1,12 @@
+/**
+ * Login Page Component
+ * Provides user authentication functionality:
+ * - Email and password form
+ * - Remember me option
+ * - Forgot password link
+ * - Form validation and error handling
+ * - Redirects to dashboard on successful login
+ */
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -7,13 +16,17 @@ import authService from '../services/authService';
 import { useRedirectIfAuthenticated } from '../utils/auth';
 
 export default function Login() {
+  // State management
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
+  // Form initialization with react-hook-form
   const { register, handleSubmit, formState: { errors } } = useForm();
   
   // Redirect if already authenticated
   useRedirectIfAuthenticated();
 
+  // Handle form submission
   const onSubmit = async (data) => {
     setIsLoading(true);
     
@@ -32,6 +45,7 @@ export default function Login() {
     <div className="auth-container">
       <div className="auth-form">
         <div className="auth-card">
+          {/* Header Section */}
           <div className="text-center mb-8">
             {/* Animated Logo/Icon */}
             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 mb-6 floating-icon pulse-glow">
@@ -55,6 +69,7 @@ export default function Login() {
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* Email Input */}
             <div className="form-field">
               <label htmlFor="email" className="form-label">
                 <div className="flex items-center">
@@ -83,6 +98,7 @@ export default function Login() {
               )}
             </div>
 
+            {/* Password Input */}
             <div className="form-field">
               <label htmlFor="password" className="form-label">
                 <div className="flex items-center">
@@ -107,6 +123,7 @@ export default function Login() {
               )}
             </div>
 
+            {/* Remember Me and Forgot Password */}
             <div className="flex items-center justify-between form-field">
               <div className="flex items-center">
                 <input
@@ -127,6 +144,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Submit Button */}
             <div className="form-field">
               <button
                 type="submit"
@@ -153,6 +171,7 @@ export default function Login() {
             </div>
           </form>
 
+          {/* Sign Up Link Section */}
           <div className="mt-8 text-center">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

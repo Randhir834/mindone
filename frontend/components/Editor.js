@@ -1,3 +1,11 @@
+/**
+ * Rich text editor component built with TipTap.
+ * Supports text formatting, mentions, images, and YouTube embeds.
+ * @param {string} content - Initial content of the editor
+ * @param {Function} onUpdate - Callback when content changes
+ * @param {boolean} readOnly - Whether the editor is in read-only mode
+ * @param {string} documentId - ID of the current document
+ */
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
@@ -15,6 +23,13 @@ import 'tippy.js/dist/tippy.css';
 import MentionList from './MentionList';
 import { userService } from '../services/userService';
 
+/**
+ * Reusable toolbar button component
+ * @param {Function} onClick - Click handler
+ * @param {boolean} active - Whether the button is in active state
+ * @param {string} icon - Optional icon to display
+ * @param {string} label - Button tooltip text
+ */
 const ToolbarButton = ({ onClick, active, icon, label, children, ...props }) => (
   <button
     type="button"
@@ -30,6 +45,8 @@ const ToolbarButton = ({ onClick, active, icon, label, children, ...props }) => 
 
 const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
   const fileInputRef = useRef();
+
+  // Initialize TipTap editor with extensions and configuration
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -39,6 +56,7 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
       FontFamily,
       Image,
       Youtube,
+      // Configure mention functionality with user search and suggestions
       Mention.configure({
         HTMLAttributes: {
           class: 'mention',
@@ -48,11 +66,13 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
           return `@${node.attrs.label ?? node.attrs.id}`;
         },
         suggestion: {
+          // Search users as user types @ mentions
           items: async (query) => {
             if (query.length === 0) return [];
             const users = await userService.searchUsers(query);
             return users;
           },
+          // Render mention suggestions using MentionList component
           render: () => {
             let component;
             let popup;
@@ -91,6 +111,7 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
               },
             };
           },
+          // Format selected mention data
           onSelect: ({ item }) => {
             return {
               id: item._id,
@@ -107,13 +128,14 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
     },
   });
 
+  // Update editor content when prop changes
   useEffect(() => {
     if (editor && !editor.isDestroyed && editor.getHTML() !== content) {
       editor.commands.setContent(content, false);
     }
   }, [content, editor]);
 
-  // Image upload handler
+  // Handle image upload from file input
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file && editor) {
@@ -125,7 +147,7 @@ const TiptapEditor = ({ content, onUpdate, readOnly = false, documentId }) => {
     }
   };
 
-  // YouTube embed handler
+  // Handle YouTube video embed via URL prompt
   const handleYouTubeEmbed = () => {
     const url = prompt('Enter YouTube video URL:');
     if (url) {

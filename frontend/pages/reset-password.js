@@ -1,3 +1,11 @@
+/**
+ * Reset Password Page Component
+ * Handles password reset flow:
+ * - Validates reset token from URL
+ * - New password and confirmation form
+ * - Password validation and error handling
+ * - Success state and redirection to login
+ */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -7,15 +15,19 @@ import authService from '../services/authService';
 import { useRedirectIfAuthenticated } from '../utils/auth';
 
 export default function ResetPassword() {
+  // State management
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [token, setToken] = useState('');
+  
+  // Router and form initialization
   const router = useRouter();
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   
   // Redirect if already authenticated
   useRedirectIfAuthenticated();
 
+  // Extract token from URL query parameters
   useEffect(() => {
     // Get token from URL query parameter
     const { token: urlToken } = router.query;
@@ -24,6 +36,7 @@ export default function ResetPassword() {
     }
   }, [router.query]);
 
+  // Handle form submission
   const onSubmit = async (data) => {
     if (!token) {
       toast.error('Invalid reset token');
@@ -47,12 +60,14 @@ export default function ResetPassword() {
     }
   };
 
+  // Show success state
   if (isSuccess) {
     return (
       <div className="auth-container">
         <div className="auth-form">
           <div className="auth-card">
             <div className="text-center">
+              {/* Success Icon */}
               <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-r from-green-400 to-green-600 mb-6 floating-icon">
                 <svg className="h-10 w-10 text-white success-checkmark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -72,12 +87,14 @@ export default function ResetPassword() {
     );
   }
 
+  // Show invalid token state
   if (!token) {
     return (
       <div className="auth-container">
         <div className="auth-form">
           <div className="auth-card">
             <div className="text-center">
+              {/* Error Icon */}
               <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-r from-red-400 to-red-600 mb-6 floating-icon">
                 <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
@@ -104,12 +121,14 @@ export default function ResetPassword() {
     );
   }
 
+  // Show password reset form
   return (
     <div className="auth-container">
       <div className="auth-form">
         <div className="auth-card">
+          {/* Header Section */}
           <div className="text-center mb-8">
-            {/* Animated Logo/Icon */}
+            {/* Lock Icon */}
             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 mb-6 floating-icon pulse-glow">
               <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -124,7 +143,9 @@ export default function ResetPassword() {
             </p>
           </div>
 
+          {/* Password Reset Form */}
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* New Password Input */}
             <div className="form-field">
               <label htmlFor="password" className="form-label">
                 <div className="flex items-center">
@@ -153,6 +174,7 @@ export default function ResetPassword() {
               )}
             </div>
 
+            {/* Confirm Password Input */}
             <div className="form-field">
               <label htmlFor="confirmPassword" className="form-label">
                 <div className="flex items-center">
@@ -182,6 +204,7 @@ export default function ResetPassword() {
               )}
             </div>
 
+            {/* Submit Button */}
             <div className="form-field">
               <button
                 type="submit"
@@ -208,6 +231,7 @@ export default function ResetPassword() {
             </div>
           </form>
 
+          {/* Login Link Section */}
           <div className="mt-8 text-center">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

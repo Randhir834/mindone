@@ -1,8 +1,16 @@
+/**
+ * SharingManager component handles document sharing functionality.
+ * Allows searching for users, adding them with specific permissions,
+ * updating existing permissions, and removing shared users.
+ * @param {Object} document - The document being shared
+ * @param {Function} onUpdate - Callback when sharing settings are updated
+ */
 import { useState, useEffect } from 'react';
 import { documentService } from '../services/documentService';
 import { userService } from '../services/userService';
 
 export default function SharingManager({ document, onUpdate }) {
+  // State management for users and UI
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -11,12 +19,14 @@ export default function SharingManager({ document, onUpdate }) {
   const [selectedPermission, setSelectedPermission] = useState('view');
   const [message, setMessage] = useState('');
 
+  // Initialize shared users list from document
   useEffect(() => {
     if (document?.sharedWith) {
       setUsers(document.sharedWith);
     }
   }, [document]);
 
+  // Search for users to share with
   const searchUsers = async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -36,12 +46,14 @@ export default function SharingManager({ document, onUpdate }) {
     }
   };
 
+  // Handle search input changes and trigger user search
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
     searchUsers(query);
   };
 
+  // Add a new user with specified permissions
   const handleAddUser = async () => {
     if (!selectedUser) {
       setMessage('Please select a user');
@@ -52,12 +64,13 @@ export default function SharingManager({ document, onUpdate }) {
     try {
       await documentService.shareDocument(document._id, selectedUser, selectedPermission);
       setMessage('User added successfully!');
+      // Reset form state
       setSearchQuery('');
       setSearchResults([]);
       setSelectedUser('');
       setSelectedPermission('view');
       
-      // Refresh the document data
+      // Refresh document data to show updated sharing list
       if (onUpdate) {
         onUpdate();
       }
@@ -68,6 +81,7 @@ export default function SharingManager({ document, onUpdate }) {
     }
   };
 
+  // Remove a user's access to the document
   const handleRemoveUser = async (userId) => {
     if (!confirm('Are you sure you want to remove this user from the document?')) {
       return;
@@ -78,7 +92,7 @@ export default function SharingManager({ document, onUpdate }) {
       await documentService.removeSharedUser(document._id, userId);
       setMessage('User removed successfully!');
       
-      // Refresh the document data
+      // Refresh document data to show updated sharing list
       if (onUpdate) {
         onUpdate();
       }
@@ -89,13 +103,14 @@ export default function SharingManager({ document, onUpdate }) {
     }
   };
 
+  // Update a user's permission level
   const handleUpdatePermission = async (userId, newPermission) => {
     setLoading(true);
     try {
       await documentService.shareDocument(document._id, userId, newPermission);
       setMessage('Permission updated successfully!');
       
-      // Refresh the document data
+      // Refresh document data to show updated permissions
       if (onUpdate) {
         onUpdate();
       }
@@ -110,6 +125,7 @@ export default function SharingManager({ document, onUpdate }) {
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Manage Sharing</h3>
       
+      {/* Status message display */}
       {message && (
         <div className={`mb-4 p-3 rounded text-sm ${
           message.includes('successfully') 
@@ -120,10 +136,11 @@ export default function SharingManager({ document, onUpdate }) {
         </div>
       )}
 
-      {/* Add User Section */}
+      {/* Add user section */}
       <div className="mb-6">
         <h4 className="text-md font-medium text-gray-700 mb-3">Add User</h4>
         <div className="space-y-3">
+          {/* User search input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Search Users
@@ -137,6 +154,7 @@ export default function SharingManager({ document, onUpdate }) {
             />
           </div>
 
+          {/* Search results dropdown */}
           {searchResults.length > 0 && (
             <div className="border border-gray-200 rounded-md max-h-40 overflow-y-auto">
               {searchResults.map((user) => (
@@ -154,6 +172,7 @@ export default function SharingManager({ document, onUpdate }) {
             </div>
           )}
 
+          {/* Permission selection and add button */}
           {selectedUser && (
             <div className="flex space-x-3">
               <div className="flex-1">
@@ -183,7 +202,7 @@ export default function SharingManager({ document, onUpdate }) {
         </div>
       </div>
 
-      {/* Current Users Section */}
+      {/* Current shared users list */}
       <div>
         <h4 className="text-md font-medium text-gray-700 mb-3">
           Shared Users ({users.length})
@@ -199,6 +218,7 @@ export default function SharingManager({ document, onUpdate }) {
                   <div className="text-sm text-gray-500">{share.user.email}</div>
                 </div>
                 <div className="flex items-center space-x-3">
+                  {/* Permission update dropdown */}
                   <select
                     value={share.permission}
                     onChange={(e) => handleUpdatePermission(share.user._id, e.target.value)}
@@ -208,6 +228,7 @@ export default function SharingManager({ document, onUpdate }) {
                     <option value="view">View</option>
                     <option value="edit">Edit</option>
                   </select>
+                  {/* Remove user button */}
                   <button
                     onClick={() => handleRemoveUser(share.user._id)}
                     disabled={loading}
