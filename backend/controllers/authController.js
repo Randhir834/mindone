@@ -9,8 +9,7 @@ const crypto = require("crypto");
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "2h";
 
-// Helper function to generate a 6-digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
 
 /**
  * @desc    Register a new user
@@ -27,32 +26,21 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash password and generate OTP
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const otp = generateOTP();
-    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
 
     // Create new user
     const user = new User({
       name,
       email,
-      password: hashedPassword,
-      otp,
-      otpExpiry,
-      isVerified: false
+      password: hashedPassword
     });
 
     await user.save();
 
-    // Prepare and send verification email with OTP
-    const emailSubject = "Verify your account";
-    const emailText = `Your OTP is: ${otp}`;
-    const emailHtml = `<div style='font-family: Arial, sans-serif;'><h2>Account Verification</h2><p>Your OTP is: <b>${otp}</b></p><p>This code will expire in 10 minutes.</p></div>`;
-    await sendEmail(user.email, emailSubject, emailText, emailHtml);
-
-    // Return success response without sensitive data
+    // Return success response
     res.status(201).json({ 
-      message: "User registered successfully. Please verify your email with the OTP sent.",
+      message: "User registered successfully! You can now login.",
       user: {
         id: user._id,
         email: user.email,
@@ -64,34 +52,7 @@ exports.register = async (req, res) => {
   }
 };
 
-/**
- * @desc    Verify user's email with OTP
- * @route   POST /api/auth/verify-otp
- * @access  Public
- */
-exports.verifyOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    // Find user and validate OTP
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
-    if (!user.otp || !user.otpExpiry || user.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: 'OTP expired or not set' });
-    }
-    if (user.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
-    }
-    // Mark user as verified and clear OTP data
-    user.isVerified = true;
-    user.otp = undefined;
-    user.otpExpiry = undefined;
-    await user.save();
-    res.json({ message: 'Account verified successfully' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
+
 
 /**
  * @desc    Authenticate user and get token
@@ -102,10 +63,9 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check user exists and is verified
+    // Check user exists
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
-    if (!user.isVerified) return res.status(403).json({ message: "Please verify your account with the OTP sent to your email." });
 
     // Validate password
     const isMatch = await bcrypt.compare(password, user.password);
@@ -257,11 +217,51 @@ exports.searchUsers = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     // Fetch user data excluding sensitive fields
-    const user = await User.findById(req.userId).select('id name email');
+    const user = await User.findById(req.userId).select('id name email firstName lastName phone bio location company website avatar createdAt updatedAt');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * @desc    Update user profile
+ * @route   PUT /api/auth/profile
+ * @access  Private
+ */
+exports.updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, phone, bio, location, company, website, avatar } = req.body;
+    
+    // Find user
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update profile fields
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+    if (bio !== undefined) user.bio = bio;
+    if (location !== undefined) user.location = location;
+    if (company !== undefined) user.company = company;
+    if (website !== undefined) user.website = website;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    // Save updated user
+    await user.save();
+
+    // Return updated profile (excluding sensitive fields)
+    const updatedUser = await User.findById(req.userId).select('id name email firstName lastName phone bio location company website avatar createdAt updatedAt');
+    
+    res.json({
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

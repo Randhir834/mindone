@@ -12,8 +12,8 @@ const {
   forgotPassword, 
   resetPassword, 
   getProfile, 
-  changePassword, 
-  verifyOtp 
+  updateProfile,
+  changePassword
 } = require("../controllers/authController");
 // Import authentication middleware
 const { protect } = require("../middleware/auth");
@@ -27,8 +27,7 @@ router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 /** PUT /api/auth/reset-password/:token - Reset password using token */
 router.put("/reset-password/:token", resetPassword);
-/** POST /api/auth/verify-otp - Verify email using OTP */
-router.post("/verify-otp", verifyOtp);
+
 
 // Protected user search route for mentions feature
 /** GET /api/auth/users/search - Search users for mentions */
@@ -37,6 +36,8 @@ router.get("/users/search", protect, require("../controllers/authController").se
 // Protected profile routes (require authentication)
 /** GET /api/auth/profile - Get current user's profile */
 router.get("/profile", protect, getProfile);
+/** PUT /api/auth/profile - Update user profile */
+router.put("/profile", protect, updateProfile);
 /** PUT /api/auth/change-password - Change user's password */
 router.put("/change-password", protect, changePassword);
 

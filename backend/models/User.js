@@ -39,11 +39,16 @@ const notificationSchema = new mongoose.Schema({
  * @property {String} name - User's full name
  * @property {String} email - User's unique email address
  * @property {String} password - Hashed password
+ * @property {String} firstName - User's first name
+ * @property {String} lastName - User's last name
+ * @property {String} phone - User's phone number
+ * @property {String} bio - User's biography/description
+ * @property {String} location - User's location/city
+ * @property {String} company - User's company/organization
+ * @property {String} website - User's website URL
+ * @property {String} avatar - User's avatar image URL
  * @property {String} resetToken - Token for password reset
  * @property {Date} resetTokenExpiry - Expiration time for reset token
- * @property {String} otp - One-time password for email verification
- * @property {Date} otpExpiry - Expiration time for OTP
- * @property {Boolean} isVerified - Email verification status
  * @property {Array} notifications - List of user's notifications
  * @property {Date} createdAt - Account creation timestamp (added by timestamps)
  * @property {Date} updatedAt - Last update timestamp (added by timestamps)
@@ -66,18 +71,57 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  // Enhanced profile fields
+  firstName: {
+    type: String,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    trim: true
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  company: {
+    type: String,
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true
+  },
+  avatar: {
+    type: String,
+    trim: true
+  },
   resetToken: String,
   resetTokenExpiry: Date,
-  // Email verification fields
-  otp: String,
-  otpExpiry: Date,
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
+
   // In-app notifications array
   notifications: [notificationSchema]
 }, { timestamps: true }); // Automatically manage createdAt and updatedAt fields
+
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+  return this.name;
+});
+
+// Ensure virtual fields are serialized
+userSchema.set('toJSON', { virtuals: true });
 
 // Export the model
 module.exports = mongoose.model("User", userSchema);
