@@ -78,9 +78,21 @@ export const useAuth = () => {
     setIsAuthenticated(authenticated);
     
     if (authenticated) {
-      const token = authService.getToken();
-      const userData = getUserFromToken(token);
-      setUser(userData);
+      // Get user data from storage first
+      const storedUser = authService.getUser();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+      
+      // Also try to get fresh data from API
+      authService.getProfile().then(profileData => {
+        setUser(profileData);
+        // Update stored user data
+        localStorage.setItem('user', JSON.stringify(profileData));
+      }).catch(error => {
+        console.log('Could not fetch fresh profile data:', error);
+        // Use stored data if API fails
+      });
     }
   }, []);
 
@@ -91,10 +103,14 @@ export const useAuth = () => {
     }
   }, [isClient, router]);
 
+  const logout = () => {
+    authService.logout();
+  };
+
   return {
     isAuthenticated: isClient ? authService.isAuthenticated() : false,
     user,
-    logout: authService.logout,
+    logout,
     getToken: authService.getToken
   };
 };

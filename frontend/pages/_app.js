@@ -51,10 +51,7 @@ function MyApp({ Component, pageProps }) {
         {/* Global toast notifications */}
         <Toaster position="bottom-right" />
         
-        {/* Global footer */}
-        <footer style={{ textAlign: 'center', padding: '1rem 0', color: '#888', fontSize: '0.95rem' }}>
-          &copy; {new Date().getFullYear()} Knowledge Base Platform. All rights reserved.
-        </footer>
+
       </div>
       <ToastContainer
         position="top-right"

@@ -2,9 +2,9 @@
  * Registration Page Component
  * Handles new user registration flow:
  * - User information form (name, email, password)
- * - OTP verification after successful registration
+
  * - Form validation and error handling
- * - Navigation to login after verification
+ * - Navigation to login after successful registration
  */
 import { useState } from 'react';
 import { useRouter } from 'next/router';
@@ -17,12 +17,6 @@ import { useRedirectIfAuthenticated } from '../utils/auth';
 export default function Register() {
   // State management
   const [isLoading, setIsLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [otpSuccess, setOtpSuccess] = useState('');
-  const [registeredEmail, setRegisteredEmail] = useState('');
   
   // Router and form initialization
   const router = useRouter();
@@ -34,34 +28,14 @@ export default function Register() {
   // Handle registration form submission
   const onSubmit = async (data) => {
     setIsLoading(true);
-    setOtpError('');
-    setOtpSuccess('');
     try {
       await authService.register(data.name, data.email, data.password);
-      setRegisteredEmail(data.email);
-      setShowOtp(true);
-      toast.success('Registration successful! Please verify OTP sent to your email.');
+      toast.success('Registration successful! You can now login.');
+      router.push('/login');
     } catch (error) {
       toast.error(error.message || 'Registration failed');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Handle OTP verification
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault();
-    setOtpLoading(true);
-    setOtpError('');
-    setOtpSuccess('');
-    try {
-      await authService.verifyOtp(registeredEmail, otp);
-      setOtpSuccess('Account verified! You can now login.');
-      setTimeout(() => router.push('/login'), 1500);
-    } catch (error) {
-      setOtpError(error.message || 'OTP verification failed');
-    } finally {
-      setOtpLoading(false);
     }
   };
 
@@ -92,38 +66,7 @@ export default function Register() {
             </p>
           </div>
 
-          {showOtp ? (
-            // OTP Verification Form
-            <form className="space-y-6" onSubmit={handleOtpSubmit}>
-              <div className="form-field">
-                <label htmlFor="otp" className="form-label">Enter OTP sent to your email</label>
-                <input
-                  id="otp"
-                  type="text"
-                  className="form-input"
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={e => setOtp(e.target.value)}
-                  required
-                  maxLength={6}
-                  minLength={6}
-                  pattern="[0-9]{6}"
-                />
-              </div>
-              {otpError && <div className="text-red-500 text-sm">{otpError}</div>}
-              {otpSuccess && <div className="text-green-600 text-sm">{otpSuccess}</div>}
-              <div className="form-field">
-                <button
-                  type="submit"
-                  disabled={otpLoading}
-                  className="form-button"
-                >
-                  {otpLoading ? 'Verifying...' : 'Verify OTP'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            // Registration Form
+          {/* Registration Form */}
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               {/* Full Name Input */}
               <div className="form-field">
@@ -268,7 +211,6 @@ export default function Register() {
                 </button>
               </div>
             </form>
-          )}
 
           {/* Login Link Section */}
           <div className="mt-8 text-center">

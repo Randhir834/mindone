@@ -5,7 +5,7 @@
  * - Token management
  * - Password reset flow
  * - User profile management
- * - OTP verification
+
  */
 
 import axios from 'axios';
@@ -71,10 +71,15 @@ export const authService = {
   async login(email, password) {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token } = response.data;
+      const { token, user } = response.data;
       if (token) {
         // Store token with 2-hour expiry
         Cookies.set('token', token, { expires: 2/24, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+        
+        // Store user data in localStorage for easier access
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
       }
       return response.data;
     } catch (error) {
@@ -87,6 +92,7 @@ export const authService = {
    */
   logout() {
     Cookies.remove('token');
+    localStorage.removeItem('user');
     if (typeof window !== 'undefined') window.location.href = '/login';
   },
 
@@ -96,6 +102,20 @@ export const authService = {
    */
   getToken() {
     return Cookies.get('token');
+  },
+
+  /**
+   * Get stored user data
+   * @returns {Object|null} User data from localStorage
+   */
+  getUser() {
+    try {
+      const userData = localStorage.getItem('user');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      return null;
+    }
   },
 
   /**
@@ -175,6 +195,20 @@ export const authService = {
   },
 
   /**
+   * Update user profile
+   * @param {Object} profileData - Profile data to update
+   * @returns {Promise<Object>} Updated profile data
+   */
+  async updateProfile(profileData) {
+    try {
+      const response = await api.put('/auth/profile', profileData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update profile' };
+    }
+  },
+
+  /**
    * Change user's password
    * @param {string} currentPassword - Current password
    * @param {string} newPassword - New password
@@ -186,21 +220,6 @@ export const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to change password' };
-    }
-  },
-
-  /**
-   * Verify OTP code after registration
-   * @param {string} email - User's email
-   * @param {string} otp - OTP code
-   * @returns {Promise<Object>} Verification confirmation
-   */
-  async verifyOtp(email, otp) {
-    try {
-      const response = await api.post('/auth/verify-otp', { email, otp });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'OTP verification failed' };
     }
   }
 };
